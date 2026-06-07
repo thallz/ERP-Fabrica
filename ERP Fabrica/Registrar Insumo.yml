@@ -1,0 +1,23 @@
+info:
+  name: Registrar Insumo
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: http://localhost:3001/api/insumos
+  body:
+    type: json
+    data: |-
+      {
+          "nome": "Farinha de Trigo Premium",
+          "unidade_medida": "kg",
+          "custo_unitario": 3.50
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

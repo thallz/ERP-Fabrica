@@ -1,0 +1,30 @@
+info:
+  name: Lançar Pedido
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: http://localhost:3000/api/pedidos
+  body:
+    type: json
+    data: |-
+      {
+        "cliente_id": "e5b67853-579c-46ec-ab9f-9515282c332b",
+        "data_entrega_esperada": "2026-06-15",
+        "observacao": "Entregar pela porta dos fundos da padaria.",
+        "itens": [
+          {
+            "produto_id": "657b5c65-a800-48ad-9385-7403a33f5e97",
+            "quantidade": 500,
+            "preco_unitario_vendido": 4.50
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

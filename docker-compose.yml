@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # O Banco de Dados PostgreSQL
+  banco-dados-erp:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=admin_fabrica
+      - POSTGRES_PASSWORD=senha_super_segura_123
+      - POSTGRES_DB=erp_salgados
+    ports:
+      - "5432:5432"
+    volumes:
+      # Mantém os dados salvos mesmo se reiniciar o computador
+      - erp-dados:/var/lib/postgresql/data
+      # LÊ O SEU SCRIPT AUTOMATICAMENTE AO LIGAR A PRIMEIRA VEZ:
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # O Motor do Sistema (A API Node.js)
+  api-erp:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_USER=admin_fabrica
+      - DB_PASSWORD=senha_super_segura_123
+      - DB_HOST=banco-dados-erp
+      - DB_PORT=5432
+      - DB_NAME=erp_salgados
+    depends_on:
+      - banco-dados-erp
+
+volumes:
+  erp-dados:

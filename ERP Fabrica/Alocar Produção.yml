@@ -1,0 +1,22 @@
+info:
+  name: Alocar Produção
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: http://localhost:3001/api/producao/alocar
+  body:
+    type: json
+    data: |-
+      {
+          "produto_id": 1,
+          "quantidade_planejada": 5000
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

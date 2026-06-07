@@ -1,0 +1,30 @@
+info:
+  name: Criar Produto
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:3001/api/produtos
+  body:
+    type: json
+    data: |-
+      {
+          "nome": "Coxinha de Frango B2B (Congelada)",
+          "preco_venda": 1.20,
+          "cmv_estimado": 35.50,
+          "margem_contribuicao": 64.50,
+          "ficha_tecnica": [
+              {
+                  "insumo_id": 1,
+                  "quantidade": 0.050 
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

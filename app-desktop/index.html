@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Fábrica | Versão Definitiva B2B</title>
+    <style>
+        :root { --primary: #2563eb; --success: #059669; --warning: #d97706; --danger: #dc2626; --bg: #f8fafc; --text: #1e293b; --border: #e2e8f0; --white: #ffffff; --modal-bg: rgba(15, 23, 42, 0.9); }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; line-height: 1.5; }
+        
+        /* NAVEGAÇÃO */
+        nav { background: var(--white); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+        .nav-links { display: flex; gap: 20px; }
+        nav button { background: none; border: none; font-weight: 600; color: #64748b; cursor: pointer; padding: 10px 15px; transition: 0.3s; border-radius: 6px; }
+        nav button.active { color: var(--primary); background: #eff6ff; border-bottom: 2px solid var(--primary); }
+        
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* HEADER E BOTÕES */
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        h2 { margin: 0; font-size: 1.8rem; color: #0f172a; }
+        .btn-group { display: flex; gap: 10px; }
+        button.btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button.btn-config { background: #e2e8f0; color: #475569; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+        /* CARDS E TABELAS */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; transition: 0.3s; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: 700; font-size: 1.1rem; }
+        .card-tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; background: #f1f5f9; color: #64748b; font-weight: normal; }
+        .admin-table { width: 100%; font-size: 0.85rem; margin-top: auto; border-collapse: separate; border-spacing: 0; background: #f8fafc; border-radius: 8px; padding: 10px; }
+        .admin-table td { padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
+        .value-cell { text-align: right; font-weight: 600; }
+        .status-good { color: var(--success); font-weight: bold; }
+        .status-bad { color: var(--danger); font-weight: bold; }
+        .card-actions { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+        .btn-card { flex: 1; padding: 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; background: #fee2e2; color: #dc2626; }
+
+        /* MODAIS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-bg); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-content { background: white; width: 90%; max-width: 650px; border-radius: 16px; padding: 2rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; }
+        .close-modal { float: right; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 1.5rem; }
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 0.85rem; font-weight: 600; color: #475569; }
+        input, select { padding: 12px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+        .temp-list { background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 1.5rem; }
+        .live-summary { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 15px; border-radius: 8px; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 15px; }
+        
+        /* TEMAS EXTRAS */
+        .op-card { border-left: 5px solid var(--warning); }
+        .client-card { border-left: 5px solid var(--primary); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-links">
+        <button onclick="mudarAba('materia')" id="nav-materia" class="active">1. Estoque</button>
+        <button onclick="mudarAba('produtos')" id="nav-produtos">2. Produtos</button>
+        <button onclick="mudarAba('comercial')" id="nav-comercial">3. Vendas B2B</button>
+        <button onclick="mudarAba('producao')" id="nav-producao">4. Fábrica</button>
+    </div>
+</nav>
+
+<div class="container">
+    <section id="aba-materia" class="section active">
+        <div class="header-actions"><h2>Almoxarifado</h2><button class="btn-primary" onclick="abrirModalMateria()">+ Novo Insumo</button></div>
+        <div id="grid-materias" class="cards-grid"></div>
+    </section>
+
+    <section id="aba-produtos" class="section">
+        <div class="header-actions"><h2>Tabela de Produtos (Engenharia)</h2><button class="btn-primary" onclick="abrirModalProduto()">+ Novo Produto</button></div>
+        <div id="grid-produtos" class="cards-grid"></div>
+    </section>
+
+    <section id="aba-comercial" class="section">
+        <div class="header-actions">
+            <h2>Gestão Comercial</h2>
+            <div class="btn-group">
+                <button class="btn-config" onclick="abrirModalCliente()">+ Novo Cliente</button>
+                <button class="btn-primary" onclick="abrirModalPedido()">+ Lançar Pedido</button>
+            </div>
+        </div>
+        <div id="grid-clientes" class="cards-grid"></div>
+    </section>
+
+    <section id="aba-producao" class="section">
+        <div class="header-actions"><h2>Fila de Produção</h2><button class="btn-primary" onclick="abrirModalNovaOP()">+ Lançar OP</button></div>
+        <div id="grid-producao" class="cards-grid"></div>
+    </section>
+</div>
+
+<div id="modal-materia" class="modal-overlay">
+    <div class="modal-content">
+        <button class="close-modal" onclick="fecharModais()">&times;</button>
+        <h3>Cadastro de Insumo</h3>
+        <div class="grid-form">
+            <div class="input-group"><label>Tipo</label><select id="mat-tipo"><option value="kg">Peso (Kg)</option><option value="un">Unidade (Un)</option></select></div>
+            <div class="input-group"><label>Nome</label><input type="text" id="mat-nome"></div>
+            <div class="input-group"><label>Preço Pago (R$)</label><input type="number" id="mat-preco"></div>
+            <div class="input-group"><label>Quantidade Embalagem</label><input type="number" id="mat-qtd" placeholder="ex: 1000 para 1kg"></div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="salvarMateria()">Gravar no Banco</button>
+    </div>
+</div>
+
+<div id="modal-produto" class="modal-overlay">
+    <div class="modal-content">
+        <button class="close-modal" onclick="fecharModais()">&times;</button>
+        <h3>Produto Final e Precificação</h3>
+        <div class="grid-form">
+            <div class="input-group"><label>Nome do Produto</label><input type="text" id="prod-nome"></div>
+            <div class="input-group"><label>Impostos (%)</label><input type="number" id="prod-imposto" value="10"></div>
+            <div class="input-group"><label>Preço de Venda (R$)</label><input type="number" id="prod-mercado"></div>
+        </div>
+        
+        <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; gap:10px;">
+            <select id="prod-select" style="flex:3;"></select>
+            <input type="number" id="prod-qtd" placeholder="Gramas ou Unidade" style="flex:1;">
+            <button onclick="addTempProd()" style="background:var(--primary); color:white; border:none; padding:0 15px; border-radius:6px;">+</button>
+        </div>
+        
+        <div id="lista-temp-prod" class="temp-list"></div>
+        
+        <div class="live-summary">
+            <div>Peso Base: <span id="live-peso">0</span></div>
+            <div>Preço Sugerido: <span id="live-preco">R$ 0,00</span></div>
+        </div>
+        
+        <button class="btn-primary" style="width:100%" onclick="salvarProduto()">Salvar Ficha Técnica no Banco</button>
+    </div>
+</div>
+
+<div id="modal-cliente" class="modal-overlay">
+    <div class="modal-content">
+        <button class="close-modal" onclick="fecharModais()">&times;</button>
+        <h3>Cadastrar Cliente</h3>
+        <div class="grid-form">
+            <div class="input-group" style="grid-column: span 2;"><label>Razão Social</label><input type="text" id="cli-nome"></div>
+            <div class="input-group"><label>CNPJ</label><input type="text" id="cli-cnpj"></div>
+            <div class="input-group"><label>Telefone</label><input type="text" id="cli-telefone"></div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="salvarCliente()">Gravar Cliente</button>
+    </div>
+</div>
+
+<div id="modal-pedido" class="modal-overlay">
+    <div class="modal-content">
+        <button class="close-modal" onclick="fecharModais()">&times;</button>
+        <h3>Lançar Pedido de Venda</h3>
+        <div class="grid-form">
+            <div class="input-group"><label>Cliente</label><select id="ped-cliente"></select></div>
+            <div class="input-group"><label>Data de Entrega</label><input type="date" id="ped-data"></div>
+        </div>
+        
+        <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin-bottom:15px; display:flex; gap:10px;">
+            <select id="ped-produto" style="flex:3;"></select>
+            <input type="number" id="ped-qtd" placeholder="Quantidade" style="flex:1;">
+            <button onclick="addTempPedido()" style="background:var(--primary); color:white; border:none; padding:0 15px; border-radius:6px;">+</button>
+        </div>
+        
+        <div id="lista-temp-pedido" class="temp-list"></div>
+        
+        <div style="text-align: right; font-size: 1.2rem; font-weight: bold; margin-bottom: 15px;">
+            Total: <span id="ped-total" style="color: var(--success);">R$ 0,00</span>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="salvarPedido()">Confirmar Venda</button>
+    </div>
+</div>
+
+<div id="modal-nova-op" class="modal-overlay">
+    <div class="modal-content">
+        <button class="close-modal" onclick="fecharModais()">&times;</button>
+        <h3>Lançar Ordem de Produção</h3>
+        <div class="grid-form">
+            <div class="input-group"><label>Produto</label><select id="op-produto"></select></div>
+            <div class="input-group"><label>Quantidade (Un)</label><input type="number" id="op-qtd"></div>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="salvarNovaOP()">Mandar para a Fábrica</button>
+    </div>
+</div>
+
+<div id="modal-intercorrencia" class="modal-overlay">
+    <div class="modal-content">
+        <button class="close-modal" onclick="fecharModais()">&times;</button>
+        <h3>Apontar Parada - OP #<span id="int-op-display"></span></h3>
+        <input type="hidden" id="int-op-id">
+        <div class="grid-form">
+            <div class="input-group">
+                <label>Código do Problema</label>
+                <select id="int-codigo">
+                    <option value="M1">M1 - Falta de Insumo</option>
+                    <option value="E1">E1 - Máquina/Energia</option>
+                    <option value="P1">P1 - Qualidade da Massa</option>
+                    <option value="O1">O1 - Ociosidade / Outros</option>
+                </select>
+            </div>
+            <div class="input-group"><label>Tempo Perdido (Minutos)</label><input type="number" id="int-tempo"></div>
+        </div>
+        <div class="input-group" style="margin-bottom:15px;"><label>Observação</label><input type="text" id="int-obs"></div>
+        <button class="btn-primary" style="background: var(--danger); width:100%;" onclick="salvarIntercorrencia()">Gravar Ocorrência</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // INTEGRAÇÃO COM A API NODE.JS (POSTGRESQL)
+    // ==========================================
+    const API_URL = 'http://localhost:3001/api';
+    
+    let materias = [], produtos = [], clientes = [], filaProducao = [];
+    let tempProd = [], tempPedido = [];
+
+    // --- LER DADOS DO BANCO ---
+    async function carregarTodosOsDados() {
+        try {
+            const [resMat, resProd, resFila, resCli] = await Promise.all([
+                fetch(`${API_URL}/insumos`),
+                fetch(`${API_URL}/produtos`),
+                fetch(`${API_URL}/producao/fila`),
+                fetch(`${API_URL}/comercial/clientes`)
+            ]);
+            
+            const dadosMat = await resMat.json();
+            materias = dadosMat.map(i => ({ id: i.id, tipo: i.unidade_medida, nome: i.nome, custoPadrao: parseFloat(i.custo_unitario) }));
+            
+            const dadosProd = await resProd.json();
+            produtos = dadosProd.map(p => ({ 
+                id: p.id, nome: p.nome, 
+                mercado: parseFloat(p.preco_venda), 
+                cmv: parseFloat(p.cmv_estimado), 
+                margem: parseFloat(p.margem_contribuicao),
+                // O custo é o preço de venda multiplicado pelo CMV
+                custo: parseFloat(p.preco_venda) * (parseFloat(p.cmv_estimado) / 100)
+            }));
+
+            filaProducao = await resFila.json();
+            clientes = await resCli.json();
+            
+            renderGrids();
+        } catch (e) { 
+            console.error(e); 
+            alert("Aviso: Conexão com o banco falhou.");
+        }
+    }
+
+    // --- ALMOXARIFADO ---
+    function abrirModalMateria() { document.getElementById('modal-materia').classList.add('open'); }
+    async function salvarMateria() {
+        const nome = document.getElementById('mat-nome').value;
+        const preco = parseFloat(document.getElementById('mat-preco').value);
+        const qtd = parseFloat(document.getElementById('mat-qtd').value);
+        const tipo = document.getElementById('mat-tipo').value;
+        
+        if(!nome || isNaN(preco) || isNaN(qtd)) return alert("Preencha tudo!");
+        let cp = (tipo === 'kg') ? (preco / qtd) * 1000 : (preco / qtd);
+
+        try {
+            const res = await fetch(`${API_URL}/insumos`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome: nome, unidade_medida: tipo, custo_unitario: cp })
+            });
+            if(res.ok) { await carregarTodosOsDados(); fecharModais(); }
+        } catch(e) { alert("Erro de rede."); }
+    }
+
+    // --- ENGENHARIA DE PRODUTOS ---
+    function abrirModalProduto() { 
+        document.getElementById('modal-produto').classList.add('open'); 
+        document.getElementById('prod-select').innerHTML = materias.map(i=>`<option value="${i.id}">${i.nome}</option>`).join('');
+        tempProd = []; renderTempProd(); 
+    }
+    
+    function addTempProd() {
+        const id = document.getElementById('prod-select').value; 
+        const qtd = parseFloat(document.getElementById('prod-qtd').value); 
+        const item = materias.find(x => String(x.id) === String(id)); 
+        if(!item || !qtd) return;
+        const custoCalc = (item.custoPadrao / 1000) * qtd; 
+        tempProd.push({ idOrigem: item.id, nome: item.nome, g: qtd, custo: custoCalc }); 
+        document.getElementById('prod-qtd').value = ""; 
+        renderTempProd();
+    }
+
+    function renderTempProd() {
+        const cont = document.getElementById('lista-temp-prod');
+        if (tempProd.length === 0) return cont.innerHTML = "<small>Ficha técnica vazia.</small>";
+        let html = `<table class="admin-table"><tbody>`;
+        tempProd.forEach((i, idx) => {
+            html += `<tr><td>${i.nome}</td><td align="right">${i.g}</td><td align="right">R$ ${i.custo.toFixed(2)}</td>
+                     <td align="center"><button onclick="tempProd.splice(${idx},1);renderTempProd()" style="color:red; background:none; border:none;">X</button></td></tr>`;
+        });
+        cont.innerHTML = html + `</tbody></table>`;
+        recalcularLive();
+    }
+
+    function recalcularLive(){
+        const pt = tempProd.reduce((a,b)=>a+parseFloat(b.g),0); 
+        const ct = tempProd.reduce((a,b)=>a+b.custo,0);
+        const imp = parseFloat(document.getElementById('prod-imposto').value) || 0; 
+        const div = 1 - ((imp/100) + (pt<100?0.60:0.50));
+        document.getElementById('live-peso').innerText = pt.toFixed(0); 
+        document.getElementById('live-preco').innerText = "R$ " + (ct/(div>0?div:0.1)).toFixed(2);
+    }
+
+    async function salvarProduto() {
+        const nome = document.getElementById('prod-nome').value;
+        const imp = parseFloat(document.getElementById('prod-imposto').value) || 0;
+        const mer = parseFloat(document.getElementById('prod-mercado').value) || 0;
+        
+        if (!nome || tempProd.length === 0) return alert("Falta nome ou ingredientes!");
+
+        const pt = tempProd.reduce((a, b) => a + b.g, 0);
+        const ct = tempProd.reduce((a, b) => a + b.custo, 0);
+        const div = 1 - ((imp / 100) + (pt < 100 ? 0.60 : 0.50));
+        const precoSugerido = ct / (div > 0 ? div : 0.1);
+        
+        const precoPraticado = mer > 0 ? mer : precoSugerido;
+        const cmv = (ct / precoPraticado) * 100;
+        const margem = (1 - (imp / 100) - (ct / precoPraticado)) * 100;
+
+        const ficha = tempProd.map(i => ({ insumo_id: i.idOrigem, quantidade: (i.g / 1000) }));
+
+        try {
+            const res = await fetch(`${API_URL}/produtos`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome: nome, preco_venda: precoPraticado, cmv_estimado: cmv, margem_contribuicao: margem, ficha_tecnica: ficha })
+            });
+            if(res.ok) { await carregarTodosOsDados(); fecharModais(); }
+        } catch(e) { alert("Erro de rede."); }
+    }
+
+    // --- COMERCIAL (VENDAS B2B) ---
+    function abrirModalCliente() { document.getElementById('modal-cliente').classList.add('open'); }
+    async function salvarCliente() {
+        const nome = document.getElementById('cli-nome').value;
+        const cnpj = document.getElementById('cli-cnpj').value;
+        const tel = document.getElementById('cli-telefone').value;
+        if(!nome || !cnpj) return alert("Razão e CNPJ obrigatórios!");
+        
+        try {
+            const res = await fetch(`${API_URL}/comercial/clientes`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ razao_social: nome, cnpj: cnpj, telefone: tel })
+            });
+            if(res.ok) { await carregarTodosOsDados(); fecharModais(); } else { alert("Erro (CNPJ já existe?)"); }
+        } catch(e) { alert("Erro de rede."); }
+    }
+
+    function abrirModalPedido() {
+        document.getElementById('modal-pedido').classList.add('open');
+        document.getElementById('ped-cliente').innerHTML = clientes.map(c => `<option value="${c.id}">${c.razao_social}</option>`).join('');
+        document.getElementById('ped-produto').innerHTML = produtos.map(p => `<option value="${p.id}">${p.nome} (R$ ${p.mercado.toFixed(2)})</option>`).join('');
+        tempPedido = []; renderTempPedido();
+    }
+
+    function addTempPedido() {
+        const id = document.getElementById('ped-produto').value;
+        const qtd = parseInt(document.getElementById('ped-qtd').value);
+        const prod = produtos.find(p => String(p.id) === String(id));
+        if(!prod || isNaN(qtd) || qtd <= 0) return;
+        tempPedido.push({ produto_id: prod.id, nome: prod.nome, quantidade: qtd, preco_unitario: prod.mercado });
+        document.getElementById('ped-qtd').value = ''; renderTempPedido();
+    }
+
+    function renderTempPedido() {
+        const cont = document.getElementById('lista-temp-pedido');
+        let total = 0;
+        if (tempPedido.length === 0) { cont.innerHTML = "<small>Adicione itens.</small>"; } 
+        else {
+            let html = `<table class="admin-table"><tbody>`;
+            tempPedido.forEach((i, idx) => {
+                const sub = i.quantidade * i.preco_unitario; total += sub;
+                html += `<tr><td>${i.quantidade}x ${i.nome}</td><td align="right">R$ ${sub.toFixed(2)}</td><td align="center"><button onclick="tempPedido.splice(${idx},1);renderTempPedido()" style="color:red; background:none; border:none;">X</button></td></tr>`;
+            });
+            cont.innerHTML = html + `</tbody></table>`;
+        }
+        document.getElementById('ped-total').innerText = `R$ ${total.toFixed(2)}`;
+    }
+
+    async function salvarPedido() {
+        const cliId = document.getElementById('ped-cliente').value;
+        const data = document.getElementById('ped-data').value;
+        if(!cliId || !data || tempPedido.length === 0) return alert("Preencha data e itens!");
+        try {
+            const res = await fetch(`${API_URL}/comercial/pedidos`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cliente_id: cliId, data_entrega: data, itens: tempPedido })
+            });
+            if(res.ok) { alert("Venda Faturada!"); fecharModais(); }
+        } catch(e) { alert("Erro."); }
+    }
+
+    // --- CHÃO DE FÁBRICA ---
+    function abrirModalNovaOP() {
+        document.getElementById('modal-nova-op').classList.add('open');
+        document.getElementById('op-produto').innerHTML = produtos.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+    }
+    async function salvarNovaOP() {
+        const prodId = document.getElementById('op-produto').value;
+        const qtd = parseInt(document.getElementById('op-qtd').value);
+        if(!prodId || isNaN(qtd) || qtd <= 0) return;
+        try {
+            const res = await fetch(`${API_URL}/producao/alocar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produto_id: prodId, quantidade_planejada: qtd }) });
+            if(res.ok) { await carregarTodosOsDados(); fecharModais(); }
+        } catch(e) { alert("Erro"); }
+    }
+
+    function abrirModalIntercorrencia(opId) {
+        document.getElementById('modal-intercorrencia').classList.add('open');
+        document.getElementById('int-op-id').value = opId;
+        document.getElementById('int-op-display').innerText = opId;
+    }
+    async function salvarIntercorrencia() {
+        const opId = document.getElementById('int-op-id').value;
+        const cod = document.getElementById('int-codigo').value;
+        const tempo = parseInt(document.getElementById('int-tempo').value);
+        const obs = document.getElementById('int-obs').value;
+        if(isNaN(tempo) || tempo <= 0) return;
+        try {
+            const res = await fetch(`${API_URL}/producao/intercorrencia`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordem_producao_id: opId, codigo_intercorrencia: cod, tempo_parada_minutos: tempo, observacao: obs }) });
+            if(res.ok) { alert("Apontamento registrado!"); fecharModais(); }
+        } catch(e) { alert("Erro"); }
+    }
+
+    // --- INTERFACE ---
+    function fecharModais() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); }
+    function mudarAba(aba){ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active')); document.getElementById('aba-'+aba).classList.add('active'); document.getElementById('nav-'+aba).classList.add('active'); }
+
+    // RENDERIZAÇÃO DA TELA (COM A MATEMÁTICA V19 DE VOLTA)
+    function renderGrids() {
+        document.getElementById('grid-materias').innerHTML = materias.map(m => `<div class="card"><div class="card-header"><span>${m.nome}</span></div><div>R$ ${m.custoPadrao.toFixed(2)} / ${m.tipo}</div></div>`).join('');
+        
+        // A MATEMÁTICA V19 COMPLETA
+        document.getElementById('grid-produtos').innerHTML = produtos.map(p => { 
+            const lucro = p.mercado - p.custo;
+            const cmvClass = p.cmv > 45 ? 'status-bad' : 'status-good';
+            return `
+            <div class="card">
+                <div class="card-header"><span>${p.nome}</span><span class="card-tag">ID: ${p.id}</span></div>
+                <table class="admin-table">
+                    <tr><td>Venda</td><td class="value-cell" style="font-weight:bold;">R$ ${p.mercado.toFixed(2)}</td></tr>
+                    <tr><td>Margem de Contribuição</td><td class="value-cell" style="color:var(--primary); font-weight:bold;">${p.margem.toFixed(1)}%</td></tr>
+                    <tr><td>CMV (Custo Mercadoria)</td><td class="value-cell ${cmvClass}">${p.cmv.toFixed(1)}%</td></tr>
+                    <tr><td>Custo Produção</td><td class="value-cell">R$ ${p.custo.toFixed(2)}</td></tr>
+                    <tr><td>Lucro Bruto</td><td class="value-cell">R$ ${lucro.toFixed(2)}</td></tr>
+                </table>
+            </div>`; 
+        }).join('');
+
+        document.getElementById('grid-clientes').innerHTML = clientes.map(c => `<div class="card client-card"><div class="card-header"><span>${c.razao_social}</span></div><div style="font-size:0.9rem; color:#475569;">CNPJ: ${c.cnpj}<br>Tel: ${c.telefone||'-'}</div></div>`).join('');
+        
+        document.getElementById('grid-producao').innerHTML = filaProducao.map(op => `<div class="card op-card"><div class="card-header"><span style="color:#64748b;">OP #${op.numero_op}</span><span class="card-tag" style="background:#fef3c7; color:#b45309;">${op.status}</span></div><div class="op-title">${op.produto}</div><div>Fabricar: <strong>${op.quantidade_planejada} un</strong></div><div class="card-actions"><button class="btn-card" onclick="abrirModalIntercorrencia(${op.numero_op})">⚠️ Apontar Parada</button></div></div>`).join('');
+    }
+
+    window.onload = async function() { await carregarTodosOsDados(); }
+</script>
+</body>
+</html>

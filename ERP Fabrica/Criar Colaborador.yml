@@ -1,0 +1,22 @@
+info:
+  name: Criar Colaborador
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:3000/api/colaboradores
+  body:
+    type: json
+    data: |-
+      {
+        "nome": "Luciano",
+        "meta_diaria_base": 350
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

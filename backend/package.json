@@ -1,0 +1,14 @@
+{
+  "name": "erp-fabrica-api",
+  "version": "1.0.0",
+  "description": "API do ERP da Fabrica de Congelados",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "pg": "^8.21.0"
+  }
+}
