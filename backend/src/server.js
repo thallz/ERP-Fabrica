@@ -5,6 +5,7 @@ const insumoRoutes = require('./routes/insumoRoutes');
 const produtoRoutes = require('./routes/produtoRoutes');
 const producaoRoutes = require('./routes/producaoRoutes');
 const comercialRoutes = require('./routes/comercialRoutes');
+const financeiroRoutes = require('./routes/financeiroRoutes');
 
 const app = express();
 const PORT = 3001;
@@ -16,6 +17,7 @@ app.use('/api/insumos', insumoRoutes);
 app.use('/api/produtos', produtoRoutes);
 app.use('/api/producao', producaoRoutes);
 app.use('/api/comercial', comercialRoutes);
+app.use('/api/financeiro', financeiroRoutes);
 
 // ==========================================
 // ROTA DE TESTE (Para rodar no Bruno)

@@ -52,6 +52,59 @@ const produtoController = {
         } catch (error) {
             res.status(500).json({ status: 'erro', erro: error.message });
         }
+    },
+
+    // 3. ATUALIZAR PRODUTO + FICHA TÉCNICA
+    atualizar: async (req, res) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const { id } = req.params;
+            const { nome, preco_venda, cmv_estimado, margem_contribuicao, ficha_tecnica } = req.body;
+
+            const result = await client.query(
+                `UPDATE produto
+                 SET nome = $1, preco_venda = $2, cmv_estimado = $3, margem_contribuicao = $4
+                 WHERE id = $5 RETURNING id`,
+                [nome, preco_venda, cmv_estimado, margem_contribuicao, id]
+            );
+            if (result.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ status: 'erro', erro: 'Produto não encontrado' });
+            }
+
+            await client.query('DELETE FROM ficha_tecnica_insumo WHERE produto_id = $1', [id]);
+            if (ficha_tecnica && ficha_tecnica.length > 0) {
+                for (const item of ficha_tecnica) {
+                    await client.query(
+                        'INSERT INTO ficha_tecnica_insumo (produto_id, insumo_id, quantidade) VALUES ($1, $2, $3)',
+                        [id, item.insumo_id, item.quantidade]
+                    );
+                }
+            }
+
+            await client.query('COMMIT');
+            res.json({ status: 'sucesso', produto_id: Number(id), mensagem: 'Produto atualizado com sucesso!' });
+        } catch (error) {
+            await client.query('ROLLBACK');
+            res.status(500).json({ status: 'erro', erro: error.message });
+        } finally {
+            client.release();
+        }
+    },
+
+    // 4. EXCLUIR PRODUTO
+    excluir: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const result = await pool.query('DELETE FROM produto WHERE id = $1 RETURNING id', [id]);
+            if (result.rows.length === 0) {
+                return res.status(404).json({ status: 'erro', erro: 'Produto não encontrado' });
+            }
+            res.json({ status: 'sucesso', id: result.rows[0].id });
+        } catch (error) {
+            res.status(500).json({ status: 'erro', erro: error.message });
+        }
     }
 };
 

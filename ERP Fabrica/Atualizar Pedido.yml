@@ -1,0 +1,24 @@
+info:
+  name: Atualizar Pedido
+  type: http
+  seq: 9
+
+http:
+  method: PUT
+  url: http://localhost:3001/api/comercial/pedidos/1
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "status": "FATURADO"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

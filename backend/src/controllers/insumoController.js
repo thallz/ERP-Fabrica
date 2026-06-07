@@ -28,6 +28,38 @@ const insumoController = {
         } catch (error) {
             res.status(500).json({ status: 'erro', erro: error.message });
         }
+    },
+
+    // 3. Atualizar insumo existente
+    atualizar: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { nome, unidade_medida, custo_unitario } = req.body;
+            const result = await pool.query(
+                'UPDATE insumo SET nome = $1, unidade_medida = $2, custo_unitario = $3 WHERE id = $4 RETURNING *',
+                [nome, unidade_medida, custo_unitario, id]
+            );
+            if (result.rows.length === 0) {
+                return res.status(404).json({ status: 'erro', erro: 'Insumo não encontrado' });
+            }
+            res.json(result.rows[0]);
+        } catch (error) {
+            res.status(500).json({ status: 'erro', erro: error.message });
+        }
+    },
+
+    // 4. Excluir insumo
+    excluir: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const result = await pool.query('DELETE FROM insumo WHERE id = $1 RETURNING id', [id]);
+            if (result.rows.length === 0) {
+                return res.status(404).json({ status: 'erro', erro: 'Insumo não encontrado' });
+            }
+            res.json({ status: 'sucesso', id: result.rows[0].id });
+        } catch (error) {
+            res.status(500).json({ status: 'erro', erro: error.message });
+        }
     }
 };
 

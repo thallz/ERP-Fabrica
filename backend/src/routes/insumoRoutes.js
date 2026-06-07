@@ -4,8 +4,8 @@ const insumoController = require('../controllers/insumoController');
 
 // Quando houver um POST na rota, vá para a função 'criar'
 router.post('/', insumoController.criar);
-
-// Quando houver um GET na rota, vá para a função 'listar'
 router.get('/', insumoController.listar);
+router.put('/:id', insumoController.atualizar);
+router.delete('/:id', insumoController.excluir);
 
 module.exports = router;

@@ -1,0 +1,26 @@
+info:
+  name: Editar Cliente
+  type: http
+  seq: 11
+
+http:
+  method: PUT
+  url: http://localhost:3001/api/comercial/clientes/1
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "razao_social": "Padaria Exemplo Ltda",
+        "cnpj": "00.000.000/0001-00",
+        "telefone": "11999999999"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
