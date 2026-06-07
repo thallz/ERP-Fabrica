@@ -1,0 +1,35 @@
+info:
+  name: Criar Receita
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: http://localhost:3001/api/receitas
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "nome": "Massa de Pastel",
+        "categoria": "Pré-Preparo",
+        "itens": [
+          {
+            "nome": "Farinha",
+            "idOrigem": 1,
+            "tipoOrigem": "materia",
+            "g": 1000,
+            "custoUnitario": 5.00,
+            "custo": 5.00
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

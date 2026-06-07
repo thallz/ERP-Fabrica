@@ -229,9 +229,13 @@
                 <button class="btn-primary" onclick="baixarBackup()">⬇️ Baixar Arquivo</button>
             </div>
             <div style="background:#fff7ed; padding:20px; border-radius:10px; border:1px solid #fed7aa;">
-                <h4>2. Restaurar Dados Locais</h4>
+                <h4>2. Importar Backup (.json)</h4>
+                <p style="font-size:0.8rem; color:#64748b;">Aceita backup do Sistema Fábrica (navegador) ou do ERP</p>
                 <input type="file" id="file-upload" accept=".json" style="margin-bottom:10px; width:100%;">
-                <button class="btn-config" style="background:#d97706; color:white;" onclick="restaurarBackup()">⬆️ Carregar Arquivo</button>
+                <button class="btn-config" style="background:#d97706; color:white; width:100%; margin-bottom:10px;" onclick="restaurarBackup()">⬆️ Carregar Arquivo JSON</button>
+                <button class="btn-primary" style="width:100%;" onclick="importarDoLocalStorageNavegador()">🌐 Importar do localStorage (só no navegador)</button>
+                <p style="font-size:0.75rem; color:#92400e; margin-top:8px;">No Electron: exporte o .json no Chrome onde rodava o Sistema Fábrica e use "Carregar Arquivo".</p>
+                <p id="import-status" style="font-size:0.8rem; color:#64748b; margin-top:10px;"></p>
             </div>
         </div>
     </div>
@@ -460,13 +464,44 @@
         el.textContent = online ? 'API online' : 'API offline';
     }
 
+    function lerLocalStorageAntigo() {
+        const parse = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } };
+        const parseObj = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch { return {}; } };
+        const materias = parse('db_mat_v19');
+        const receitas = parse('db_rec_v19').length ? parse('db_rec_v19') : parse(DB_KEY_REC);
+        const produtos = parse('db_prod_v19');
+        const categorias = parseObj('db_cats_v19').materia ? parseObj('db_cats_v19') : null;
+        if (!materias.length && !receitas.length && !produtos.length) return null;
+        return { materias, receitas, produtos, categorias: categorias || undefined };
+    }
+
+    async function importarReceitasLocaisSeNecessario(receitasAtuais) {
+        const pacote = lerLocalStorageAntigo();
+        if (!pacote || !pacote.receitas.length || !apiOnline) return false;
+        if (receitasAtuais.length > 0) return false;
+        const ok = await importarBackupCompleto(pacote, true);
+        return ok.receitas > 0;
+    }
+
+    async function persistirReceitasNoBanco() {
+        if (!apiOnline || !receitas.length) return;
+        for (const rec of receitas) {
+            try {
+                await fetch(`${API_URL}/receitas/${rec.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome: rec.nome, categoria: rec.categoria, itens: rec.itens })
+                });
+            } catch (e) { /* ignora falha individual */ }
+        }
+    }
+
     async function carregarTodosOsDados() {
-        receitas = JSON.parse(localStorage.getItem(DB_KEY_REC)) || [];
         const matExtra = getMatExtras();
         const prodExtra = getProdExtras();
 
         try {
-            const [resStatus, resMat, resProd, resFila, resCli, resPed, resFin, resCR] = await Promise.all([
+            const [resStatus, resMat, resProd, resFila, resCli, resPed, resFin, resCR, resRec] = await Promise.all([
                 fetch(`${API_URL}/status`),
                 fetch(`${API_URL}/insumos`),
                 fetch(`${API_URL}/produtos`),
@@ -474,7 +509,8 @@
                 fetch(`${API_URL}/comercial/clientes`),
                 fetch(`${API_URL}/comercial/pedidos`),
                 fetch(`${API_URL}/financeiro/resumo`),
-                fetch(`${API_URL}/financeiro/contas-receber`)
+                fetch(`${API_URL}/financeiro/contas-receber`),
+                fetch(`${API_URL}/receitas`)
             ]);
 
             if (!resMat.ok || !resProd.ok) throw new Error('API indisponível');
@@ -513,12 +549,19 @@
             pedidos = resPed.ok ? await resPed.json() : [];
             resumoFinanceiro = resFin.ok ? await resFin.json() : null;
             contasReceber = resCR.ok ? await resCR.json() : [];
+            receitas = resRec.ok ? await resRec.json() : [];
+            const migrou = await importarReceitasLocaisSeNecessario(receitas);
+            if (migrou) {
+                const resRec2 = await fetch(`${API_URL}/receitas`);
+                receitas = resRec2.ok ? await resRec2.json() : [];
+            }
         } catch (e) {
             console.error(e);
             setApiStatus(false);
+            receitas = [];
         }
 
-        recalcularCascata();
+        recalcularCascata(false);
         renderFilters();
         renderGrids();
         renderFinanceiro();
@@ -551,32 +594,237 @@
         document.getElementById('sub-' + mod + '-' + aba).classList.add('active');
     }
 
-    // --- BACKUP ---
-    function abrirModalSistema() { document.getElementById('modal-sistema').classList.add('open'); }
+    // --- BACKUP E IMPORTAÇÃO ---
+    function abrirModalSistema() {
+        document.getElementById('modal-sistema').classList.add('open');
+        document.getElementById('import-status').innerText = '';
+    }
     function baixarBackup() {
-        const dados = { receitas, categorias, matExtra: getMatExtras(), prodExtra: getProdExtras() };
+        const dados = { materias, receitas, produtos, categorias, matExtra: getMatExtras(), prodExtra: getProdExtras(), versao: 'erp_v2' };
         const a = document.createElement('a');
         a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(dados));
         a.download = 'backup_erp_fabrica_' + new Date().toISOString().split('T')[0] + '.json';
         a.click();
     }
-    function restaurarBackup() {
+
+    function setImportStatus(msg) {
+        const el = document.getElementById('import-status');
+        if (el) el.innerText = msg;
+    }
+
+    async function buscarInsumosExistentes() {
+        const res = await fetch(`${API_URL}/insumos`);
+        return res.ok ? await res.json() : [];
+    }
+
+    async function criarOuMapearInsumo(m, mapaInsumo, matExtra, insumosExistentes) {
+        const existente = insumosExistentes.find(i => i.nome === m.nome && i.unidade_medida === (m.tipo || m.unidade_medida));
+        if (existente) {
+            mapaInsumo[String(m.id)] = existente.id;
+            matExtra[existente.id] = {
+                categoria: m.categoria || 'Geral',
+                precoRef: m.precoRef,
+                qtdRef: m.qtdRef
+            };
+            return existente.id;
+        }
+        const res = await fetch(`${API_URL}/insumos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nome: m.nome,
+                unidade_medida: m.tipo || m.unidade_medida || 'kg',
+                custo_unitario: parseFloat(m.custoPadrao ?? m.custo_unitario)
+            })
+        });
+        if (!res.ok) throw new Error('Falha ao criar insumo ' + m.nome);
+        const saved = await res.json();
+        mapaInsumo[String(m.id)] = saved.id;
+        matExtra[saved.id] = {
+            categoria: m.categoria || 'Geral',
+            precoRef: m.precoRef,
+            qtdRef: m.qtdRef
+        };
+        insumosExistentes.push(saved);
+        return saved.id;
+    }
+
+    function explodeFichaFromItens(itens, receitasArr) {
+        const mapa = {};
+        (itens || []).forEach(item => {
+            if ((item.tipoOrigem || item.tipo_origem) === 'materia') {
+                const qty = item.g / 1000;
+                const id = item.idOrigem ?? item.origem_id;
+                mapa[id] = (mapa[id] || 0) + qty;
+            } else {
+                const rec = receitasArr.find(r => String(r.id) === String(item.idOrigem ?? item.origem_id));
+                if (!rec || !rec.pesoTotal) return;
+                rec.itens.forEach(sub => {
+                    if ((sub.tipoOrigem || sub.tipo_origem) !== 'materia') return;
+                    const qty = ((sub.g / rec.pesoTotal) * item.g) / 1000;
+                    const sid = sub.idOrigem ?? sub.origem_id;
+                    mapa[sid] = (mapa[sid] || 0) + qty;
+                });
+            }
+        });
+        return Object.entries(mapa).map(([insumo_id, quantidade]) => ({
+            insumo_id: Number(insumo_id),
+            quantidade
+        })).filter(f => f.quantidade > 0);
+    }
+
+    async function importarBackupCompleto(json, silencioso) {
+        if (!apiOnline) {
+            alert('API offline. Inicie o backend na porta 3001 antes de importar.');
+            return { insumos: 0, receitas: 0, produtos: 0, erros: ['API offline'] };
+        }
+
+        const stats = { insumos: 0, receitas: 0, produtos: 0, erros: [] };
+        const mapaInsumo = {};
+        const matExtra = { ...getMatExtras(), ...(json.matExtra || {}) };
+        const prodExtra = { ...getProdExtras(), ...(json.prodExtra || {}) };
+
+        if (json.categorias) {
+            categorias = json.categorias;
+            localStorage.setItem(DB_KEY_CATS, JSON.stringify(categorias));
+        }
+
+        setImportStatus('Importando insumos...');
+        const insumosExistentes = await buscarInsumosExistentes();
+        const listaMaterias = json.materias || [];
+
+        for (const m of listaMaterias) {
+            try {
+                await criarOuMapearInsumo(m, mapaInsumo, matExtra, insumosExistentes);
+                stats.insumos++;
+            } catch (e) {
+                stats.erros.push('Insumo ' + m.nome + ': ' + e.message);
+            }
+        }
+        setMatExtras(matExtra);
+
+        const listaReceitas = json.receitas || [];
+        if (listaReceitas.length) {
+            setImportStatus('Importando receitas...');
+            try {
+                const res = await fetch(`${API_URL}/receitas/importar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ receitas: listaReceitas, mapa_insumos: mapaInsumo })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.erro || 'Erro nas receitas');
+                stats.receitas = data.importadas || 0;
+            } catch (e) {
+                stats.erros.push('Receitas: ' + e.message);
+            }
+        }
+
+        setImportStatus('Carregando receitas do banco...');
+        const resRec = await fetch(`${API_URL}/receitas`);
+        const receitasDb = resRec.ok ? await resRec.json() : [];
+        const mapaReceita = {};
+        listaReceitas.forEach(old => {
+            const match = receitasDb.find(r => r.nome === old.nome);
+            if (match) mapaReceita[String(old.id)] = match.id;
+        });
+
+        const listaProdutos = json.produtos || [];
+        if (listaProdutos.length) {
+            setImportStatus('Importando produtos...');
+            for (const p of listaProdutos) {
+                try {
+                    const itensRemap = (p.itens || []).map(item => ({
+                        ...item,
+                        tipoOrigem: item.tipoOrigem || item.tipo_origem,
+                        idOrigem: (item.tipoOrigem || item.tipo_origem) === 'materia'
+                            ? (mapaInsumo[String(item.idOrigem)] ?? item.idOrigem)
+                            : (mapaReceita[String(item.idOrigem)] ?? item.idOrigem),
+                        g: item.g
+                    }));
+                    const ficha = explodeFichaFromItens(itensRemap, receitasDb);
+                    if (!ficha.length) throw new Error('ficha técnica vazia');
+
+                    const precoPraticado = parseFloat(p.mercado || p.preco_venda || p.precoSugerido || 0);
+                    const custo = parseFloat(p.custo || 0);
+                    const cmv = p.cmv != null ? parseFloat(p.cmv) : (precoPraticado > 0 ? (custo / precoPraticado) * 100 : 0);
+                    const margem = p.margem != null ? parseFloat(p.margem) : parseFloat(p.margem_contribuicao || 0);
+
+                    const res = await fetch(`${API_URL}/produtos`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            nome: p.nome,
+                            preco_venda: precoPraticado,
+                            cmv_estimado: cmv,
+                            margem_contribuicao: margem,
+                            ficha_tecnica: ficha
+                        })
+                    });
+                    if (!res.ok) throw new Error('API recusou');
+                    const result = await res.json();
+                    prodExtra[result.produto_id] = {
+                        categoria: p.categoria || 'Geral',
+                        imposto: p.imposto != null ? p.imposto : 10,
+                        peso: p.peso || 0,
+                        custo,
+                        precoSugerido: p.precoSugerido || precoPraticado,
+                        precoMinimo: p.precoMinimo || 0,
+                        itens: itensRemap,
+                        embalagemId: mapaInsumo[String(p.embalagemId)] || p.embalagemId,
+                        embalagemCap: p.embalagemCap
+                    };
+                    stats.produtos++;
+                } catch (e) {
+                    stats.erros.push('Produto ' + p.nome + ': ' + e.message);
+                }
+            }
+        }
+        setProdExtras(prodExtra);
+
+        localStorage.removeItem('db_mat_v19');
+        localStorage.removeItem('db_rec_v19');
+        localStorage.removeItem('db_prod_v19');
+        localStorage.removeItem('db_cats_v19');
+        localStorage.removeItem(DB_KEY_REC);
+
+        if (!silencioso) {
+            const msg = `✅ ${stats.insumos} insumos, ${stats.receitas} receitas, ${stats.produtos} produtos importados.` +
+                (stats.erros.length ? '\n⚠️ Erros:\n' + stats.erros.join('\n') : '');
+            setImportStatus(msg.replace(/\n/g, ' '));
+            alert(msg);
+        }
+        return stats;
+    }
+
+    async function restaurarBackup() {
         const input = document.getElementById('file-upload');
         if (!input.files.length) return alert('Selecione um arquivo .json');
         const reader = new FileReader();
-        reader.onload = function(ev) {
+        reader.onload = async function(ev) {
             try {
                 const json = JSON.parse(ev.target.result);
-                if (!confirm('Substituir dados locais (receitas, categorias)?')) return;
-                if (json.receitas) { receitas = json.receitas; localStorage.setItem(DB_KEY_REC, JSON.stringify(receitas)); }
-                if (json.categorias) { categorias = json.categorias; localStorage.setItem(DB_KEY_CATS, JSON.stringify(categorias)); }
-                if (json.matExtra) setMatExtras(json.matExtra);
-                if (json.prodExtra) setProdExtras(json.prodExtra);
-                alert('Restaurado!');
-                carregarTodosOsDados();
-            } catch (e) { alert('Erro ao ler arquivo.'); }
+                if (!confirm('Importar dados do arquivo para o banco PostgreSQL?\n\nNovos registros serão criados (insumos duplicados pelo nome serão reutilizados).')) return;
+                await importarBackupCompleto(json, false);
+                fecharModais();
+                await carregarTodosOsDados();
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao ler arquivo: ' + e.message);
+            }
         };
         reader.readAsText(input.files[0]);
+    }
+
+    async function importarDoLocalStorageNavegador() {
+        const pacote = lerLocalStorageAntigo();
+        if (!pacote) return alert('Nenhum dado encontrado no localStorage.\n\nAbra o Sistema Fábrica no navegador (Chrome/Edge), ou importe um arquivo .json de backup.');
+        const qtd = (pacote.materias?.length || 0) + (pacote.receitas?.length || 0) + (pacote.produtos?.length || 0);
+        if (!confirm(`Encontrados no navegador:\n• ${pacote.materias?.length || 0} insumos\n• ${pacote.receitas?.length || 0} receitas\n• ${pacote.produtos?.length || 0} produtos\n\nImportar ${qtd} itens para o PostgreSQL?`)) return;
+        setImportStatus('Importando...');
+        await importarBackupCompleto(pacote, false);
+        fecharModais();
+        await carregarTodosOsDados();
     }
 
     // --- FILTROS E CATEGORIAS ---
@@ -681,7 +929,7 @@
             fecharModais();
             await carregarTodosOsDados();
             if (id) sincronizarNomes('materia', id, nome);
-            recalcularCascata();
+            recalcularCascata(true);
         } catch (e) {
             alert('Erro ao gravar insumo no banco.');
         }
@@ -702,7 +950,7 @@
         renderGrids();
     }
 
-    // --- RECEITAS (localStorage) ---
+    // --- RECEITAS (PostgreSQL via API) ---
     function abrirModalReceita(id) {
         document.getElementById('modal-receita').classList.add('open');
         popSelect('receita', 'rec-categoria');
@@ -721,34 +969,40 @@
         renderTempRec();
     }
 
-    function salvarReceita() {
+    async function salvarReceita() {
         const id = document.getElementById('edit-rec-id').value;
         const nome = document.getElementById('rec-nome').value;
         const cat = document.getElementById('rec-categoria').value;
         if (!nome || tempRec.length === 0) return alert('Preencha nome e ingredientes.');
+        if (!apiOnline) return alert('API offline.');
 
-        const custoTotal = tempRec.reduce((a, b) => a + b.custo, 0);
-        const pesoTotal = tempRec.reduce((a, b) => a + b.g, 0);
-        const custoPorKg = pesoTotal > 0 ? (custoTotal / pesoTotal) * 1000 : 0;
-        const obj = { id: id ? Number(id) : Date.now(), nome, categoria: cat, custo: custoTotal, pesoTotal, custoPorKg, itens: [...tempRec] };
-
-        if (id) {
-            const idx = receitas.findIndex(r => r.id == id);
-            receitas[idx] = obj;
-            sincronizarNomes('receita', id, nome);
-        } else {
-            receitas.push(obj);
+        const payload = { nome, categoria: cat, itens: [...tempRec] };
+        try {
+            const url = id ? `${API_URL}/receitas/${id}` : `${API_URL}/receitas`;
+            const res = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error();
+            if (id) sincronizarNomes('receita', id, nome);
+            fecharModais();
+            await carregarTodosOsDados();
+        } catch (e) {
+            alert('Erro ao salvar receita no banco.');
         }
-        localStorage.setItem(DB_KEY_REC, JSON.stringify(receitas));
-        fecharModais();
-        recalcularCascata();
     }
 
-    function excluirReceita(id) {
+    async function excluirReceita(id) {
         if (!confirm('Excluir esta receita?')) return;
-        receitas = receitas.filter(x => x.id != id);
-        localStorage.setItem(DB_KEY_REC, JSON.stringify(receitas));
-        recalcularCascata();
+        if (!apiOnline) return alert('API offline.');
+        try {
+            const res = await fetch(`${API_URL}/receitas/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error();
+            await carregarTodosOsDados();
+        } catch (e) {
+            alert('Não foi possível excluir (pode estar em uso em outra receita ou produto).');
+        }
     }
 
     // --- PRODUTOS ---
@@ -1053,13 +1307,13 @@
         produtos.forEach(prod => prod.itens.forEach(item => {
             if (item.tipoOrigem === tipo && String(item.idOrigem) === String(idRef)) item.nome = novoNome;
         }));
-        localStorage.setItem(DB_KEY_REC, JSON.stringify(receitas));
         const extras = getProdExtras();
         produtos.forEach(p => { if (p.itens) extras[p.id] = { ...extras[p.id], itens: p.itens }; });
         setProdExtras(extras);
+        persistirReceitasNoBanco();
     }
 
-    function recalcularCascata() {
+    function recalcularCascata(salvarNoBanco) {
         const updateRec = (rec) => {
             let totalCusto = 0, totalPeso = 0;
             rec.itens.forEach(item => {
@@ -1116,8 +1370,8 @@
             }
         });
 
-        localStorage.setItem(DB_KEY_REC, JSON.stringify(receitas));
         renderGrids();
+        if (salvarNoBanco) persistirReceitasNoBanco();
     }
 
     // --- SELECTS E TEMPS ---

@@ -44,6 +44,28 @@ CREATE TABLE ficha_tecnica_embalagem (
     PRIMARY KEY (produto_id, embalagem_id)
 );
 
+-- 4b. RECEITAS (Massas, Recheios e Pré-Preparos)
+CREATE TABLE receita (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    categoria VARCHAR(50) DEFAULT 'Geral',
+    custo_total DECIMAL(12, 4) DEFAULT 0,
+    peso_total DECIMAL(12, 4) DEFAULT 0,
+    custo_por_kg DECIMAL(12, 4) DEFAULT 0,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE receita_item (
+    id SERIAL PRIMARY KEY,
+    receita_id INT NOT NULL REFERENCES receita(id) ON DELETE CASCADE,
+    tipo_origem VARCHAR(10) NOT NULL CHECK (tipo_origem IN ('materia', 'receita')),
+    origem_id INT NOT NULL,
+    nome VARCHAR(100) NOT NULL,
+    quantidade_gramas DECIMAL(12, 4) NOT NULL,
+    custo_unitario DECIMAL(12, 4) DEFAULT 0,
+    custo DECIMAL(12, 4) DEFAULT 0
+);
+
 -- 5. CONFIGURAÇÃO DE INTERCORRÊNCIAS (Padrões da Fábrica)
 CREATE TABLE tipo_intercorrencia (
     codigo VARCHAR(2) PRIMARY KEY,

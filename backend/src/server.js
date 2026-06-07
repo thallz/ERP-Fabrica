@@ -1,23 +1,28 @@
 const express = require('express');
 const cors = require('cors');
-const pool = require('./config/db'); // Importa a nossa conexão
+const pool = require('./config/db');
+const { runMigrations } = require('./config/migrate');
 const insumoRoutes = require('./routes/insumoRoutes');
 const produtoRoutes = require('./routes/produtoRoutes');
 const producaoRoutes = require('./routes/producaoRoutes');
 const comercialRoutes = require('./routes/comercialRoutes');
 const financeiroRoutes = require('./routes/financeiroRoutes');
+const receitaRoutes = require('./routes/receitaRoutes');
 
 const app = express();
 const PORT = 3001;
 
-// Permite receber dados em JSON e conversar com o Electron
 app.use(cors());
-app.use(express.json());
+
+// Bruno e alguns clientes enviam body "null" em GET — strict:false evita crash
+app.use(express.json({ strict: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use('/api/insumos', insumoRoutes);
 app.use('/api/produtos', produtoRoutes);
 app.use('/api/producao', producaoRoutes);
 app.use('/api/comercial', comercialRoutes);
 app.use('/api/financeiro', financeiroRoutes);
+app.use('/api/receitas', receitaRoutes);
 
 // ==========================================
 // ROTA DE TESTE (Para rodar no Bruno)
@@ -38,7 +43,13 @@ app.get('/api/status', async (req, res) => {
     }
 });
 
-// Liga o servidor
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor da API rodando na porta ${PORT}`);
-});
+runMigrations()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor da API rodando na porta ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error('❌ Falha nas migrações:', err.message);
+        process.exit(1);
+    });

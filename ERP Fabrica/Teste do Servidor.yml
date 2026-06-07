@@ -6,6 +6,8 @@ info:
 http:
   method: GET
   url: http://localhost:3001/api/status
+  body:
+    type: none
   auth: inherit
 
 settings:

@@ -5,7 +5,9 @@ info:
 
 http:
   method: GET
-  url: http://localhost:3000/api/clientes
+  url: http://localhost:3001/api/comercial/clientes
+  body:
+    type: none
   auth: inherit
 
 settings:
