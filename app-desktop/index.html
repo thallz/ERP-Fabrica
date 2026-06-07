@@ -152,6 +152,7 @@
         <button onclick="mudarSubAba('producao','receitas')" id="sub-producao-receitas">Receitas</button>
         <button onclick="mudarSubAba('producao','produtos')" id="sub-producao-produtos">Produtos</button>
         <button onclick="mudarSubAba('producao','fabrica')" id="sub-producao-fabrica">Chão de Fábrica</button>
+        <button onclick="mudarSubAba('producao','compras')" id="sub-producao-compras">Lista de Compras</button>
     </div>
     <div class="container">
         <section id="prod-materia" class="sub-section active">
@@ -191,9 +192,29 @@
         <section id="prod-fabrica" class="sub-section">
             <div class="header-actions">
                 <h2>Fila de Produção</h2>
-                <button class="btn-primary" onclick="abrirModalNovaOP()">+ Lançar OP</button>
+                <div class="btn-group">
+                    <button class="btn-config" onclick="window.open('calculadora.html','_blank')">🧮 Calculadora Completa</button>
+                    <button class="btn-primary" onclick="abrirModalNovaOP()">+ Lançar OP</button>
+                </div>
             </div>
             <div id="grid-producao" class="cards-grid"></div>
+        </section>
+        <section id="prod-compras" class="sub-section">
+            <div class="header-actions">
+                <h2>MRP — Necessidade de Compras</h2>
+                <div class="btn-group">
+                    <select id="mrp-margem" onchange="carregarNecessidadeCompras()" style="padding:10px; border-radius:8px; border:1px solid var(--border);">
+                        <option value="0">Margem 0%</option>
+                        <option value="0.05" selected>Margem 5%</option>
+                        <option value="0.10">Margem 10%</option>
+                    </select>
+                    <button class="btn-config" onclick="carregarNecessidadeCompras()">🔄 Atualizar</button>
+                    <button class="btn-config" onclick="enviarWhatsAppCompras()">📱 WhatsApp</button>
+                    <button class="btn-config" onclick="window.print()">🖨️ Imprimir</button>
+                </div>
+            </div>
+            <div id="mrp-avisos" style="margin-bottom:15px;"></div>
+            <div id="grid-compras" class="data-table-wrap"></div>
         </section>
     </div>
 </div>
@@ -441,6 +462,8 @@
     let apiOnline = false;
     let moduloAtual = 'comercial';
     let materias = [], receitas = [], produtos = [], clientes = [], pedidos = [], filaProducao = [];
+    let necessidadeCompras = null;
+    let textoWhatsAppCompras = '';
     let resumoFinanceiro = null, contasReceber = [];
     let filtroMat = 'todos', filtroRec = 'todos', filtroProd = 'todos';
     let tempRec = [], tempProd = [], tempPedido = [];
@@ -536,6 +559,7 @@
                 return {
                     id: p.id, nome: p.nome, mercado, cmv: cmvPct,
                     margem: parseFloat(p.margem_contribuicao) || 0,
+                    estoqueAtual: parseInt(p.estoque_atual, 10) || 0,
                     custo, peso: ex.peso || 0, imposto: ex.imposto != null ? ex.imposto : 10,
                     precoSugerido: ex.precoSugerido || mercado,
                     precoMinimo: ex.precoMinimo || 0,
@@ -565,6 +589,7 @@
         renderFilters();
         renderGrids();
         renderFinanceiro();
+        await carregarNecessidadeCompras(true);
     }
 
     function mudarModulo(mod) {
@@ -580,7 +605,7 @@
     function mudarSubAba(mod, aba) {
         const map = {
             comercial: ['pedidos', 'clientes'],
-            producao: ['materia', 'receitas', 'produtos', 'fabrica'],
+            producao: ['materia', 'receitas', 'produtos', 'fabrica', 'compras'],
             financeiro: ['dashboard', 'receber']
         };
         map[mod].forEach(id => {
@@ -1083,6 +1108,24 @@
         }
     }
 
+    async function ajustarEstoqueProduto(id) {
+        const p = produtos.find(x => x.id == id);
+        if (!p) return;
+        const v = prompt(`Estoque Câmara Fria — ${p.nome} (unidades):`, p.estoqueAtual || 0);
+        if (v === null) return;
+        const qtd = Math.max(0, parseInt(v, 10) || 0);
+        if (!apiOnline) return alert('API offline.');
+        try {
+            const res = await fetch(`${API_URL}/produtos/${id}/estoque`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estoque_atual: qtd })
+            });
+            if (res.ok) await carregarTodosOsDados();
+            else alert('Erro ao atualizar estoque.');
+        } catch (e) { alert('Erro de rede.'); }
+    }
+
     async function excluirProduto(id) {
         if (!confirm('Excluir este produto do banco?')) return;
         if (apiOnline) {
@@ -1246,13 +1289,31 @@
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cliente_id: cliId, data_entrega: data, itens: tempPedido })
             });
+            const data = await res.json();
             if (res.ok) {
                 fecharModais();
+                let msg = data.mensagem || 'Pedido lançado!';
+                if (data.ops_geradas && data.ops_geradas.length) {
+                    msg += '\n\nOPs geradas:\n' + data.ops_geradas.map(o =>
+                        `• OP #${o.op_id}: ${o.quantidade_planejada}x ${o.produto}`
+                    ).join('\n');
+                }
+                if (data.avisos && data.avisos.length) {
+                    msg += '\n\nAvisos:\n' + data.avisos.join('\n');
+                }
+                alert(msg);
                 await carregarTodosOsDados();
-                mudarModulo('comercial');
-                mudarSubAba('comercial', 'pedidos');
+                if (data.ops_geradas && data.ops_geradas.length) {
+                    mudarModulo('producao');
+                    mudarSubAba('producao', 'fabrica');
+                } else {
+                    mudarModulo('comercial');
+                    mudarSubAba('comercial', 'pedidos');
+                }
+            } else {
+                alert(data.erro || 'Erro ao lançar pedido.');
             }
-        } catch (e) { alert('Erro.'); }
+        } catch (e) { alert('Erro de rede.'); }
     }
 
     // --- PRODUÇÃO ---
@@ -1281,6 +1342,87 @@
         document.getElementById('modal-intercorrencia').classList.add('open');
         document.getElementById('int-op-id').value = opId;
         document.getElementById('int-op-display').innerText = opId;
+    }
+
+    async function excluirOP(id) {
+        if (!confirm('Excluir a OP #' + id + '? Apontamentos de parada também serão removidos.')) return;
+        if (!apiOnline) return alert('API offline.');
+        try {
+            const res = await fetch(`${API_URL}/producao/op/${id}`, { method: 'DELETE' });
+            if (res.ok) await carregarTodosOsDados();
+            else alert('Não foi possível excluir a OP.');
+        } catch (e) { alert('Erro de rede.'); }
+    }
+
+    async function carregarNecessidadeCompras(silencioso) {
+        const grid = document.getElementById('grid-compras');
+        const avisosEl = document.getElementById('mrp-avisos');
+        if (!grid) return;
+        if (!apiOnline) {
+            grid.innerHTML = '<p style="padding:16px;color:#64748b">API offline.</p>';
+            return;
+        }
+        const margem = document.getElementById('mrp-margem')?.value || '0';
+        try {
+            const res = await fetch(`${API_URL}/producao/necessidade-compras?margem=${margem}`);
+            if (!res.ok) throw new Error();
+            necessidadeCompras = await res.json();
+
+            if (necessidadeCompras.avisos && necessidadeCompras.avisos.length) {
+                avisosEl.innerHTML = necessidadeCompras.avisos.map(a =>
+                    `<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px;border-radius:8px;margin-bottom:8px;font-size:0.85rem;">⚠️ ${a}</div>`
+                ).join('');
+            } else {
+                avisosEl.innerHTML = '';
+            }
+
+            const itens = necessidadeCompras.itens_comprar || [];
+            if (!itens.length) {
+                grid.innerHTML = `<p style="padding:20px;color:#64748b">Nenhuma compra necessária. ${necessidadeCompras.ops_na_fila || 0} OP(s) na fila — almoxarifado cobre a demanda.</p>`;
+                textoWhatsAppCompras = '';
+                return;
+            }
+
+            let total = 0;
+            let linhas = '';
+            itens.forEach(i => {
+                total += i.custo_estimado;
+                const qtdFmt = i.unidade_medida === 'kg' && i.quantidade_comprar < 1
+                    ? (i.quantidade_comprar * 1000).toFixed(0) + ' g'
+                    : i.quantidade_comprar.toFixed(i.unidade_medida === 'un' ? 0 : 3) + ' ' + i.unidade_medida;
+                linhas += `<tr>
+                    <td>${i.nome} <small style="color:#94a3b8">(${i.tipo})</small></td>
+                    <td align="right">${i.demanda_total.toFixed(3)}</td>
+                    <td align="right">${i.estoque_atual}</td>
+                    <td align="right"><strong>${qtdFmt}</strong></td>
+                    <td align="right">${formatarMoeda(i.custo_estimado)}</td>
+                </tr>`;
+            });
+
+            grid.innerHTML = `<table class="data-table">
+                <thead><tr>
+                    <th>Insumo</th><th align="right">Demanda</th><th align="right">Estoque</th>
+                    <th align="right">Comprar</th><th align="right">Custo Est.</th>
+                </tr></thead>
+                <tbody>${linhas}</tbody>
+                <tfoot><tr style="font-weight:bold;background:#f8fafc;">
+                    <td colspan="4" align="right">Total estimado</td>
+                    <td align="right">${formatarMoeda(total)}</td>
+                </tr></tfoot>
+            </table>`;
+
+            textoWhatsAppCompras = '🛒 *LISTA DE COMPRAS — ERP Fábrica*\n' +
+                `OPs na fila: ${necessidadeCompras.ops_na_fila}\n\n` +
+                itens.map(i => `• ${i.nome}: ${i.quantidade_comprar.toFixed(3)} ${i.unidade_medida}`).join('\n');
+        } catch (e) {
+            if (!silencioso) alert('Erro ao calcular necessidade de compras.');
+            grid.innerHTML = '<p style="padding:16px;color:#ef4444">Erro ao carregar MRP.</p>';
+        }
+    }
+
+    function enviarWhatsAppCompras() {
+        if (!textoWhatsAppCompras) return alert('Nenhum item para comprar.');
+        window.open('https://wa.me/?text=' + encodeURIComponent(textoWhatsAppCompras), '_blank');
     }
 
     async function salvarIntercorrencia() {
@@ -1557,6 +1699,7 @@
                 <table class="admin-table">
                     <tr class="hide-print"><td>Custo Total</td><td class="value-cell">R$ ${(p.custo || 0).toFixed(2)}</td></tr>
                     <tr class="hide-print"><td>Preço Sugerido</td><td class="value-cell" style="color:var(--primary)">R$ ${(p.precoSugerido || precoPraticado).toFixed(2)}</td></tr>
+                    <tr><td>Câmara Fria</td><td class="value-cell" style="color:var(--primary);font-weight:bold;">${p.estoqueAtual || 0} un</td></tr>
                     <tr><td>Preço de Venda</td><td class="value-cell" style="font-weight:bold;">R$ ${precoPraticado.toFixed(2)}</td></tr>
                     <tr class="hide-print"><td>Margem Real</td><td class="value-cell" style="color:${corMargem};font-weight:bold;">${margemReal.toFixed(1)}%</td></tr>
                     <tr class="hide-print"><td>CMV (%)</td><td class="value-cell ${cmvClass}">${cmv.toFixed(1)}%</td></tr>
@@ -1564,6 +1707,7 @@
                 </table>
                 <div class="card-actions">
                     <button class="btn-card btn-edit" onclick="abrirModalProduto(${p.id})">Editar</button>
+                    <button class="btn-card btn-edit" onclick="ajustarEstoqueProduto(${p.id})">📦 Estoque</button>
                     <button class="btn-card btn-del" onclick="excluirProduto(${p.id})">X</button>
                 </div>
             </div>`;
@@ -1598,8 +1742,10 @@
                 <div class="card-header"><span style="color:#64748b;">OP #${op.numero_op}</span><span class="card-tag" style="background:#fef3c7;color:#b45309;">${op.status}</span></div>
                 <div style="font-weight:600;margin:8px 0;">${op.produto}</div>
                 <div>Fabricar: <strong>${op.quantidade_planejada} un</strong></div>
+                <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">Câmara Fria: ${op.estoque_camara_fria ?? 0} un</div>
                 <div class="card-actions">
-                    <button class="btn-card btn-del" onclick="abrirModalIntercorrencia(${op.numero_op})">⚠️ Apontar Parada</button>
+                    <button class="btn-card btn-edit" onclick="abrirModalIntercorrencia(${op.numero_op})">⚠️ Parada</button>
+                    <button class="btn-card btn-del" onclick="excluirOP(${op.numero_op})">🗑️ Excluir</button>
                 </div>
             </div>`).join('') : '<p style="color:#64748b">Fila de produção vazia.</p>';
     }

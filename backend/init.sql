@@ -26,7 +26,8 @@ CREATE TABLE produto (
     nome VARCHAR(100) NOT NULL,
     preco_venda DECIMAL(10, 2) NOT NULL,
     cmv_estimado DECIMAL(10, 2), -- Atualizado via API toda vez que um insumo muda de preço
-    margem_contribuicao DECIMAL(5, 2) -- Porcentagem (%)
+    margem_contribuicao DECIMAL(5, 2), -- Porcentagem (%)
+    estoque_atual INT DEFAULT 0 -- Câmara Fria (produto acabado)
 );
 
 -- 4. FICHAS TÉCNICAS (A "Receita" do Produto para Cálculo em Cascata)

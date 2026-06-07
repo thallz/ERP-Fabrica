@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora MRP | ERP Fábrica</title>
+    <style>
+        :root { --primary: #2563eb; --warning: #d97706; --bg: #f8fafc; --border: #e2e8f0; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); margin: 0; padding-bottom: 40px; }
+        nav { background: white; border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+        .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+        button { border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-config { background: #e2e8f0; color: #475569; }
+        .btn-wa { background: #25D366; color: white; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+        th { background: #f8fafc; color: #475569; }
+        .alert { background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; }
+        .warn { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; }
+        @media print { nav button { display: none; } }
+    </style>
+</head>
+<body>
+<nav>
+    <h1>🧮 Calculadora MRP — Lista de Compras</h1>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <span id="api-status" style="font-size:0.75rem;padding:4px 10px;border-radius:20px;background:#fee2e2;color:#991b1b;">API offline</span>
+        <button class="btn-config" onclick="location.href='index.html'">← Voltar ao ERP</button>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="alert">
+        <strong>Automático:</strong> A lista é calculada no servidor cruzando a <strong>Fila de Produção (OPs)</strong> com o estoque do <strong>Almoxarifado</strong>. Só aparecem itens com quantidade a comprar &gt; 0.
+    </div>
+
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
+            <h2 style="margin:0;">OPs na Fila</h2>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <label>Margem de perda:
+                    <select id="margem" onchange="carregar()" style="padding:8px;border-radius:6px;margin-left:6px;">
+                        <option value="0">0%</option>
+                        <option value="0.05" selected>5%</option>
+                        <option value="0.10">10%</option>
+                    </select>
+                </label>
+                <button class="btn-config" onclick="carregar()">🔄 Atualizar</button>
+            </div>
+        </div>
+        <div id="ops-lista"></div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--warning);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px;">
+            <div>
+                <h2 style="margin:0;">Lista de Compras</h2>
+                <p style="color:#64748b;font-size:0.85rem;margin:4px 0 0;">Demanda das OPs − estoque do almoxarifado</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn-wa" onclick="whatsapp()">📱 WhatsApp</button>
+                <button class="btn-config" onclick="window.print()">🖨️ Imprimir</button>
+            </div>
+        </div>
+        <div id="avisos"></div>
+        <div id="tabela-compras"></div>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:3001/api';
+    let textoWA = '';
+
+    async function carregar() {
+        const status = document.getElementById('api-status');
+        const margem = document.getElementById('margem').value;
+        try {
+            const [resStatus, resMrp] = await Promise.all([
+                fetch(`${API_URL}/status`),
+                fetch(`${API_URL}/producao/necessidade-compras?margem=${margem}`)
+            ]);
+            status.textContent = resStatus.ok ? 'API online' : 'API offline';
+            status.style.background = resStatus.ok ? '#dcfce7' : '#fee2e2';
+            status.style.color = resStatus.ok ? '#166534' : '#991b1b';
+            if (!resMrp.ok) throw new Error();
+
+            const data = await resMrp.json();
+            document.getElementById('avisos').innerHTML = (data.avisos || []).map(a => `<div class="warn">⚠️ ${a}</div>`).join('');
+
+            const ops = data.detalhe_ops || [];
+            document.getElementById('ops-lista').innerHTML = ops.length
+                ? '<table><thead><tr><th>OP</th><th>Produto</th><th>Qtd</th></tr></thead><tbody>' +
+                  ops.map(o => `<tr><td>#${o.op_id}</td><td>${o.produto}</td><td><strong>${o.quantidade_planejada} un</strong></td></tr>`).join('') +
+                  '</tbody></table>'
+                : '<p style="color:#64748b">Nenhuma OP na fila.</p>';
+
+            const itens = data.itens_comprar || [];
+            if (!itens.length) {
+                document.getElementById('tabela-compras').innerHTML = '<p style="color:#64748b">Almoxarifado cobre toda a demanda. Nada a comprar.</p>';
+                textoWA = '';
+                return;
+            }
+
+            let total = 0;
+            const rows = itens.map(i => {
+                total += i.custo_estimado;
+                return `<tr>
+                    <td>${i.nome}</td>
+                    <td align="right">${i.demanda_total.toFixed(3)} ${i.unidade_medida}</td>
+                    <td align="right">${i.estoque_atual}</td>
+                    <td align="right"><strong>${i.quantidade_comprar.toFixed(3)} ${i.unidade_medida}</strong></td>
+                    <td align="right">R$ ${i.custo_estimado.toFixed(2)}</td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById('tabela-compras').innerHTML = `
+                <table>
+                    <thead><tr><th>Insumo</th><th align="right">Demanda</th><th align="right">Estoque</th><th align="right">Comprar</th><th align="right">Custo</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                    <tfoot><tr style="font-weight:bold;background:#f8fafc;"><td colspan="4" align="right">Total</td><td align="right">R$ ${total.toFixed(2)}</td></tr></tfoot>
+                </table>`;
+
+            textoWA = '🛒 *COMPRAS — ERP Fábrica*\n' + itens.map(i => `• ${i.nome}: ${i.quantidade_comprar.toFixed(3)} ${i.unidade_medida}`).join('\n');
+        } catch (e) {
+            document.getElementById('tabela-compras').innerHTML = '<p style="color:#ef4444">Erro ao conectar na API (porta 3001).</p>';
+        }
+    }
+
+    function whatsapp() {
+        if (!textoWA) return alert('Nada para enviar.');
+        window.open('https://wa.me/?text=' + encodeURIComponent(textoWA), '_blank');
+    }
+
+    carregar();
+</script>
+</body>
+</html>

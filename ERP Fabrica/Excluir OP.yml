@@ -1,0 +1,17 @@
+info:
+  name: Excluir OP
+  type: http
+  seq: 15
+
+http:
+  method: DELETE
+  url: http://localhost:3001/api/producao/op/1
+  body:
+    type: none
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

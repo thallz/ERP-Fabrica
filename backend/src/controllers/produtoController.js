@@ -93,7 +93,26 @@ const produtoController = {
         }
     },
 
-    // 4. EXCLUIR PRODUTO
+    // 4. AJUSTAR ESTOQUE CÂMARA FRIA
+    ajustarEstoque: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { estoque_atual } = req.body;
+            const valor = Math.max(0, parseInt(estoque_atual, 10) || 0);
+            const result = await pool.query(
+                'UPDATE produto SET estoque_atual = $1 WHERE id = $2 RETURNING id, nome, estoque_atual',
+                [valor, id]
+            );
+            if (result.rows.length === 0) {
+                return res.status(404).json({ status: 'erro', erro: 'Produto não encontrado' });
+            }
+            res.json(result.rows[0]);
+        } catch (error) {
+            res.status(500).json({ status: 'erro', erro: error.message });
+        }
+    },
+
+    // 5. EXCLUIR PRODUTO
     excluir: async (req, res) => {
         try {
             const { id } = req.params;

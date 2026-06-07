@@ -23,7 +23,10 @@ async function runMigrations() {
             custo DECIMAL(12, 4) DEFAULT 0
         );
     `);
-    console.log('✅ Migrações verificadas (receitas)');
+    await pool.query(`
+        ALTER TABLE produto ADD COLUMN IF NOT EXISTS estoque_atual INT DEFAULT 0;
+    `);
+    console.log('✅ Migrações verificadas (receitas, estoque produto)');
 }
 
 module.exports = { runMigrations };

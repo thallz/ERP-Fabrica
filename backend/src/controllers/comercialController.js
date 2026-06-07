@@ -107,27 +107,97 @@ const comercialController = {
         }
     },
 
-    // 4. LANÇAR PEDIDO (Transação Segura)
+    // 4. LANÇAR PEDIDO — baixa Câmara Fria + gera OP automática (transação única)
     lancarPedido: async (req, res) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
             const { cliente_id, data_entrega, itens } = req.body;
-            
-            // Calcula o valor total do pedido automaticamente
-            let valorTotal = 0;
-            itens.forEach(item => {
-                valorTotal += (item.quantidade * item.preco_unitario);
-            });
 
-            // Grava a "Capa" do Pedido
+            if (!itens || !itens.length) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ status: 'erro', erro: 'Pedido sem itens.' });
+            }
+
+            let valorTotal = 0;
+            const opsGeradas = [];
+            const avisos = [];
+            const baixasEstoque = [];
+
+            for (const item of itens) {
+                valorTotal += item.quantidade * item.preco_unitario;
+
+                const prodResult = await client.query(
+                    'SELECT id, nome, COALESCE(estoque_atual, 0) AS estoque_atual FROM produto WHERE id = $1 FOR UPDATE',
+                    [item.produto_id]
+                );
+                if (prodResult.rows.length === 0) {
+                    throw new Error(`Produto ID ${item.produto_id} não encontrado.`);
+                }
+
+                const produto = prodResult.rows[0];
+                const estoqueAnterior = parseInt(produto.estoque_atual, 10) || 0;
+                const qtdVendida = parseInt(item.quantidade, 10);
+
+                let novoEstoque = 0;
+                let quantidadeFaltante = 0;
+
+                if (qtdVendida <= estoqueAnterior) {
+                    novoEstoque = estoqueAnterior - qtdVendida;
+                } else {
+                    quantidadeFaltante = qtdVendida - estoqueAnterior;
+                    novoEstoque = 0;
+                }
+
+                if (novoEstoque < 0) novoEstoque = 0;
+
+                await client.query(
+                    'UPDATE produto SET estoque_atual = $1 WHERE id = $2',
+                    [novoEstoque, item.produto_id]
+                );
+
+                baixasEstoque.push({
+                    produto_id: item.produto_id,
+                    produto: produto.nome,
+                    vendido: qtdVendida,
+                    estoque_anterior: estoqueAnterior,
+                    estoque_atual: novoEstoque
+                });
+
+                if (quantidadeFaltante > 0) {
+                    const ficha = await client.query(
+                        'SELECT COUNT(*)::int AS total FROM ficha_tecnica_insumo WHERE produto_id = $1',
+                        [item.produto_id]
+                    );
+                    if (ficha.rows[0].total === 0) {
+                        avisos.push(
+                            `"${produto.nome}": faltam ${quantidadeFaltante} un, mas não há ficha técnica cadastrada.`
+                        );
+                    }
+
+                    const opResult = await client.query(
+                        `INSERT INTO ordem_producao (produto_id, quantidade_planejada, status)
+                         VALUES ($1, $2, 'FILA') RETURNING id`,
+                        [item.produto_id, quantidadeFaltante]
+                    );
+
+                    opsGeradas.push({
+                        op_id: opResult.rows[0].id,
+                        produto_id: item.produto_id,
+                        produto: produto.nome,
+                        quantidade_planejada: quantidadeFaltante
+                    });
+                }
+            }
+
+            const statusPedido = opsGeradas.length > 0 ? 'PRODUZINDO' : 'CRIADO';
+
             const resultPedido = await client.query(
-                'INSERT INTO pedido (cliente_id, data_entrega, valor_total) VALUES ($1, $2, $3) RETURNING id',
-                [cliente_id, data_entrega, valorTotal]
+                'INSERT INTO pedido (cliente_id, data_entrega, valor_total, status) VALUES ($1, $2, $3, $4) RETURNING id',
+                [cliente_id, data_entrega, valorTotal, statusPedido]
             );
             const pedidoId = resultPedido.rows[0].id;
 
-            // Grava os Itens do Pedido
             for (const item of itens) {
                 await client.query(
                     'INSERT INTO item_pedido (pedido_id, produto_id, quantidade, preco_unitario) VALUES ($1, $2, $3, $4)',
@@ -136,10 +206,19 @@ const comercialController = {
             }
 
             await client.query('COMMIT');
-            res.status(201).json({ 
-                status: 'sucesso', 
-                pedido_id: pedidoId, 
-                mensagem: 'Pedido B2B lançado com sucesso!' 
+
+            let mensagem = 'Pedido B2B lançado com sucesso!';
+            if (opsGeradas.length) {
+                mensagem += ` ${opsGeradas.length} OP(s) gerada(s) automaticamente na fila.`;
+            }
+
+            res.status(201).json({
+                status: 'sucesso',
+                pedido_id: pedidoId,
+                mensagem,
+                ops_geradas: opsGeradas,
+                baixas_estoque: baixasEstoque,
+                avisos
             });
         } catch (error) {
             await client.query('ROLLBACK');
