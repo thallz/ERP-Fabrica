@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comercial / Clientes — ERP Fabrica</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .toolbar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .toolbar .search-bar { flex: 1; max-width: 380px; }
+    .toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+    .checkbox-col { width: 40px; }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--brand); cursor: pointer; }
+
+    td.cnpj-col { font-family: monospace; font-size: 12.5px; color: var(--text-secondary); }
+
+    .tbl-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      font-size: 12.5px; color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+<div class="erp-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>ERP Fabrica</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Menu Principal</div>
+      <a href="index.html" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="vendas.html" class="nav-link active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Comercial/Clientes
+      </a>
+      <a href="producao.html" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Almoxarifado
+      </a>
+      <a href="financeiro.html" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financeiro
+      </a>
+      <div class="sidebar-section-label">Configuracao</div>
+      <a href="#" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07 10 10 0 0 0 19.07 4.93z"/></svg>
+        Configuracoes
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sair do Sistema
+      </a>
+      <div class="sidebar-version">v2.4.0-build.102</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
+    <header class="topbar">
+      <div class="topbar-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Busca global (Alt + S)
+      </div>
+      <div class="topbar-right">
+        <span class="badge-offline">Modo Offline</span>
+        <button class="topbar-icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
+        <button class="topbar-icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <div class="user-chip">
+          <div><strong>Admin Fabrica</strong><span>Administrador</span></div>
+          <div class="user-avatar">AF</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Clientes</h1>
+          <p>Gerencie sua base de parceiros comerciais e dados fiscais.</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-primary" onclick="openDrawer()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo Cliente
+          </button>
+        </div>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="search-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Pesquisar por nome, CNPJ ou telefone..." oninput="filterClientes()" />
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="checkbox-col"><input type="checkbox" id="check-all" onchange="toggleAll(this)" /></th>
+                <th>Nome / Razao Social</th>
+                <th>CNPJ / CPF</th>
+                <th>Telefone</th>
+                <th>Cadastrado em</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="clientes-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Carregando clientes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-footer">
+          <span id="table-info">—</span>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <span>&copy; 2024 ERP Fabrica — Todos os direitos reservados &nbsp;&nbsp;<span class="status-dot"></span> Sistema Online (Sincronizado)</span>
+      <div class="footer-links">
+        <a href="#">Suporte Tecnico</a>
+        <a href="#">Documentacao</a>
+        <span>IP: 192.168.1.15</span>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- DRAWER BACKDROP -->
+<div class="drawer-backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
+
+<!-- DRAWER: Novo / Editar Cliente -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <h2>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span id="drawer-title">Novo Cadastro de Cliente</span>
+    </h2>
+    <p id="drawer-subtitle">Preencha os dados abaixo para registrar um novo parceiro.</p>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <div class="drawer-body">
+    <form id="form-cliente" onsubmit="submitCliente(event)">
+      <input type="hidden" id="edit-id" />
+
+      <div class="form-section-title">Identificacao</div>
+      <div class="form-group">
+        <label>Razao Social <span style="color:var(--red)">*</span></label>
+        <input type="text" id="f-razao" placeholder="Ex: Padaria Centro Ltda" required />
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Nome Fantasia</label>
+          <input type="text" id="f-fantasia" placeholder="Ex: Padaria do Ze" />
+        </div>
+        <div class="form-group">
+          <label>CNPJ / CPF <span style="color:var(--red)">*</span></label>
+          <input type="text" id="f-cnpj" placeholder="00.000.000/0001-00" required />
+        </div>
+      </div>
+
+      <div class="form-section-title">Contatos</div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>E-mail Principal</label>
+          <input type="email" id="f-email" placeholder="financeiro@cliente.com.br" />
+        </div>
+        <div class="form-group">
+          <label>Telefone</label>
+          <input type="text" id="f-telefone" placeholder="(00) 0000-0000" />
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Celular / WhatsApp</label>
+          <input type="text" id="f-celular" placeholder="(00) 90000-0000" />
+        </div>
+        <div class="form-group">
+          <label>Pessoa de Contato</label>
+          <input type="text" id="f-contato" placeholder="Nome do responsavel" />
+        </div>
+      </div>
+
+      <div class="form-section-title">Fiscal &amp; Financeiro</div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Limite de Credito (R$)</label>
+          <input type="number" id="f-limite" placeholder="5000,00" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Dia de Vencimento</label>
+          <input type="number" id="f-vencimento" placeholder="10" min="1" max="31" />
+        </div>
+      </div>
+
+      <div class="form-section-title">Observacoes Internas</div>
+      <div class="form-group">
+        <textarea id="f-obs" rows="3" placeholder="Observacoes sobre o cliente, condicoes especiais, etc."></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="drawer-footer">
+    <span class="hint">ESC para fechar</span>
+    <button class="btn btn-outline" onclick="closeDrawer()">Cancelar</button>
+    <button class="btn btn-outline" onclick="submitCliente(event, true)">Salvar e Novo</button>
+    <button class="btn btn-primary" onclick="submitCliente(event)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Salvar Registro
+    </button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  const API = 'http://localhost:3001/api';
+  let allClientes = [];
+  let filtered = [];
+  const PAGE_SIZE = 10;
+  let currentPage = 1;
+
+  function fmtDate(s) {
+    if (!s) return '—';
+    return new Date(s).toLocaleDateString('pt-BR');
+  }
+  function fmtCNPJ(s) {
+    if (!s) return '—';
+    return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  }
+  function toast(msg, type = '') {
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // --- Load clientes ---
+  async function loadClientes() {
+    try {
+      const data = await fetch(`${API}/comercial/clientes`).then(r => r.json());
+      allClientes = Array.isArray(data) ? data : [];
+    } catch {
+      allClientes = [
+        { id:1, razao_social:'Metalurgica Avancada Ltda', cnpj:'12345678000190', telefone:'(11) 4002-8922', criado_em:'2024-01-10' },
+        { id:2, razao_social:'Industria de Plasticos Globo', cnpj:'98765432000110', telefone:'(19) 3456-7890', criado_em:'2024-02-14' },
+        { id:3, razao_social:'Construtora Horizonte S.A.', cnpj:'45678901000155', telefone:'(21) 2345-6789', criado_em:'2024-03-01' },
+        { id:4, razao_social:'Tecnologia em Usinagem Precisao', cnpj:'23456789000133', telefone:'(47) 9987-6543', criado_em:'2024-03-20' },
+        { id:5, razao_social:'Distribuidora de Aco Brasil', cnpj:'34567890000122', telefone:'(31) 3333-4444', criado_em:'2024-04-05' },
+        { id:6, razao_social:'Padaria Centro Ltda', cnpj:'11222333000199', telefone:'(11) 9999-8888', criado_em:'2024-05-01' },
+      ];
+      toast('Servidor offline — dados de demonstracao.', 'error');
+    }
+    filterClientes();
+  }
+
+  function filterClientes() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    filtered = allClientes.filter(c =>
+      c.razao_social?.toLowerCase().includes(q) ||
+      c.cnpj?.includes(q) ||
+      c.telefone?.includes(q)
+    );
+    currentPage = 1;
+    renderTable();
+  }
+
+  function renderTable() {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const page  = filtered.slice(start, start + PAGE_SIZE);
+    const tbody = document.getElementById('clientes-tbody');
+
+    if (!page.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Nenhum cliente encontrado.</td></tr>';
+    } else {
+      tbody.innerHTML = page.map(c => `
+        <tr>
+          <td class="checkbox-col"><input type="checkbox" class="row-check" /></td>
+          <td><span style="font-weight:500">${c.razao_social}</span></td>
+          <td class="cnpj-col">${fmtCNPJ(c.cnpj)}</td>
+          <td>${c.telefone || '—'}</td>
+          <td>${fmtDate(c.criado_em)}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openEdit(${c.id})">Editar</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('table-info').textContent =
+      `Exibindo ${start + 1}-${Math.min(start + PAGE_SIZE, filtered.length)} de ${filtered.length} registros`;
+
+    renderPagination();
+  }
+
+  function renderPagination() {
+    const total = Math.ceil(filtered.length / PAGE_SIZE);
+    const pg = document.getElementById('pagination');
+    if (total <= 1) { pg.innerHTML = ''; return; }
+    let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>Anterior</button>`;
+    for (let i = 1; i <= total; i++) {
+      html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    }
+    html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>Proximo</button>`;
+    pg.innerHTML = html;
+  }
+
+  function goPage(p) {
+    const total = Math.ceil(filtered.length / PAGE_SIZE);
+    if (p < 1 || p > total) return;
+    currentPage = p;
+    renderTable();
+  }
+
+  function toggleAll(cb) {
+    document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+  }
+
+  // --- Drawer ---
+  function openDrawer(id) {
+    document.getElementById('drawer-title').textContent    = id ? 'Editar Cliente' : 'Novo Cadastro de Cliente';
+    document.getElementById('drawer-subtitle').textContent = id ? 'Atualize os dados do parceiro.' : 'Preencha os dados abaixo para registrar um novo parceiro.';
+    document.getElementById('form-cliente').reset();
+    document.getElementById('edit-id').value = id || '';
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-backdrop').classList.add('open');
+  }
+
+  function openEdit(id) {
+    const c = allClientes.find(x => x.id === id);
+    if (!c) return;
+    openDrawer(id);
+    document.getElementById('f-razao').value    = c.razao_social || '';
+    document.getElementById('f-cnpj').value     = c.cnpj || '';
+    document.getElementById('f-telefone').value = c.telefone || '';
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawer-backdrop').classList.remove('open');
+  }
+
+  async function submitCliente(e, andNew = false) {
+    if (e && e.preventDefault) e.preventDefault();
+    const form = document.getElementById('form-cliente');
+    if (!form.reportValidity()) return;
+
+    const id      = document.getElementById('edit-id').value;
+    const payload = {
+      razao_social: document.getElementById('f-razao').value,
+      cnpj:         document.getElementById('f-cnpj').value.replace(/\D/g,''),
+      telefone:     document.getElementById('f-telefone').value,
+    };
+
+    try {
+      const url    = id ? `${API}/comercial/clientes/${id}` : `${API}/comercial/clientes`;
+      const method = id ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      const data   = await res.json();
+      if (!res.ok) throw new Error(data.erro || 'Erro ao salvar');
+      toast(id ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!', 'success');
+      loadClientes();
+      if (andNew) { form.reset(); document.getElementById('edit-id').value=''; }
+      else closeDrawer();
+    } catch (err) {
+      // Demo mode: add locally
+      if (!id) {
+        const newC = { id: Date.now(), ...payload, criado_em: new Date().toISOString() };
+        allClientes.unshift(newC);
+        filterClientes();
+        toast('Cliente salvo localmente (modo offline).', '');
+        if (andNew) form.reset();
+        else closeDrawer();
+      } else {
+        toast('Erro: ' + err.message, 'error');
+      }
+    }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+  document.addEventListener('DOMContentLoaded', loadClientes);
+</script>
+</body>
+</html>

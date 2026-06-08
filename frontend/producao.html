@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Almoxarifado — ERP Fabrica</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .alm-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .toolbar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .toolbar .search-bar { flex: 1; max-width: 380px; }
+    .toolbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+    .sku-link { color: var(--brand); font-weight: 600; font-size: 12.5px; cursor: pointer; text-decoration: none; }
+    .sku-link:hover { text-decoration: underline; }
+
+    .qty-cell { font-size: 15px; font-weight: 700; }
+    .qty-badge { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+    .badge-critico { background: #fee2e2; color: var(--red); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; }
+    .badge-alerta  { background: #fef3c7; color: var(--amber); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; }
+
+    .loc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); margin-right: 5px; }
+
+    .action-icons { display: flex; gap: 4px; }
+    .action-icons button, .action-icons a {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface); cursor: pointer;
+      color: var(--text-secondary);
+      transition: border-color .12s, color .12s;
+      text-decoration: none;
+    }
+    .action-icons button:hover, .action-icons a:hover { border-color: var(--brand); color: var(--brand); }
+    .action-icons button.red:hover { border-color: var(--red); color: var(--red); }
+
+    .tbl-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      font-size: 12.5px; color: var(--text-muted); flex-wrap: wrap; gap: 8px;
+    }
+
+    select.cat-select {
+      width: auto; min-width: 160px; padding: 7px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 13px; background: var(--surface);
+    }
+
+    @media(max-width:800px) { .alm-kpi-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="erp-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>ERP Fabrica</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Menu Principal</div>
+      <a href="index.html" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="vendas.html" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Comercial/Clientes
+      </a>
+      <a href="producao.html" class="nav-link active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Almoxarifado
+      </a>
+      <a href="financeiro.html" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financeiro
+      </a>
+      <div class="sidebar-section-label">Configuracao</div>
+      <a href="#" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07 10 10 0 0 0 19.07 4.93z"/></svg>
+        Configuracoes
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sair do Sistema</a>
+      <div class="sidebar-version">v2.4.0-build.102</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
+    <header class="topbar">
+      <div class="topbar-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Busca global (Alt + S)
+      </div>
+      <div class="topbar-right">
+        <span class="badge-offline">Modo Offline</span>
+        <button class="topbar-icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
+        <button class="topbar-icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <div class="user-chip">
+          <div><strong>Admin Fabrica</strong><span>Administrador</span></div>
+          <div class="user-avatar">AF</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Almoxarifado</h1>
+          <p>Gestao de estoques, insumos e movimentacoes de materiais.</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-outline" style="color:var(--amber);border-color:var(--amber)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            Ajuste Rapido
+          </button>
+          <button class="btn btn-outline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Imprimir Inventario
+          </button>
+          <button class="btn btn-primary" onclick="openNovoInsumo()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Movimentacao
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="alm-kpi-grid">
+        <div class="kpi-card accent-blue">
+          <div class="kpi-label">Total de SKUs</div>
+          <div class="kpi-value" id="kpi-skus">—</div>
+          <div class="kpi-sub" id="kpi-skus-sub">—</div>
+          <div class="kpi-icon blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          </div>
+        </div>
+        <div class="kpi-card accent-green">
+          <div class="kpi-label">Valor em Estoque</div>
+          <div class="kpi-value" id="kpi-valor">—</div>
+          <div class="kpi-sub">Custo medio ponderado</div>
+          <div class="kpi-icon green">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+        </div>
+        <div class="kpi-card accent-red">
+          <div class="kpi-label">Itens Criticos</div>
+          <div class="kpi-value" id="kpi-criticos">—</div>
+          <div class="kpi-sub">Abaixo do ponto de pedido</div>
+          <div class="kpi-icon red">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="card">
+        <div class="card-header" style="padding-bottom:14px">
+          <div class="toolbar" style="margin:0">
+            <div class="search-bar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="alm-search" placeholder="Filtrar por nome, SKU ou localizacao..." oninput="filterInsumos()" style="border:none;outline:none;background:transparent;font-size:13px;color:var(--text-primary);width:100%" />
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-outline btn-sm">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Filtros Avancados
+              </button>
+              <select class="cat-select" onchange="filterInsumos()">
+                <option value="">Todas Categorias</option>
+                <option value="MP">Materia-Prima</option>
+                <option value="EL">Eletrico</option>
+                <option value="QU">Quimicos</option>
+                <option value="FE">Ferragens</option>
+                <option value="EP">EPIs</option>
+                <option value="EM">Embalagem</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Nome do Item</th>
+                <th style="text-align:center">Qtd.</th>
+                <th>Unidade</th>
+                <th>Localizacao</th>
+                <th>Ultima Entrada</th>
+                <th style="text-align:right">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="insumos-tbody">
+              <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-footer">
+          <span id="alm-info">—</span>
+          <div class="pagination" id="alm-pagination"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- QUICK ACTIONS BAR -->
+    <div class="quick-actions">
+      <button class="quick-action-btn" onclick="openNovoInsumo()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Novo Item<br><span style="font-weight:400;opacity:.7">Cadastrar SKU</span>
+      </button>
+      <button class="quick-action-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+        Conferencia<br><span style="font-weight:400;opacity:.7">Auditoria de Cargas</span>
+      </button>
+      <button class="quick-action-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        Inventario Rotativo<br><span style="font-weight:400;opacity:.7">Contagem Diaria</span>
+      </button>
+      <button class="quick-action-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Etiquetas<br><span style="font-weight:400;opacity:.7">Gerar QR Codes</span>
+      </button>
+    </div>
+
+    <footer class="site-footer">
+      <span>&copy; 2024 ERP Fabrica — Todos os direitos reservados &nbsp;&nbsp;<span class="status-dot"></span> Sistema Online (Sincronizado)</span>
+      <div class="footer-links">
+        <a href="#">Suporte Tecnico</a>
+        <a href="#">Documentacao</a>
+        <span>IP: 192.168.1.15</span>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- DRAWER: Novo Insumo -->
+<div class="drawer-backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <h2>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      Novo Item de Estoque
+    </h2>
+    <p>Cadastre um novo insumo ou material no almoxarifado.</p>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <div class="drawer-body">
+    <form id="form-insumo" onsubmit="submitInsumo(event)">
+      <div class="form-section-title">Identificacao</div>
+      <div class="form-group">
+        <label>Nome do Item <span style="color:var(--red)">*</span></label>
+        <input type="text" id="f-nome" placeholder="Ex: Chapa de Aco Inox 304 - 2mm" required />
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Unidade de Medida <span style="color:var(--red)">*</span></label>
+          <select id="f-unidade" required>
+            <option value="">Selecione...</option>
+            <option>UN</option><option>KG</option><option>MT</option>
+            <option>LT</option><option>PAR</option><option>RL</option>
+            <option>CX</option><option>SC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Localizacao</label>
+          <input type="text" id="f-local" placeholder="Ex: CORREDOR-A1" />
+        </div>
+      </div>
+
+      <div class="form-section-title">Custo e Estoque</div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Custo Unitario (R$) <span style="color:var(--red)">*</span></label>
+          <input type="number" id="f-custo" placeholder="0,00" step="0.0001" min="0" required />
+        </div>
+        <div class="form-group">
+          <label>Estoque Inicial</label>
+          <input type="number" id="f-estoque" placeholder="0" min="0" />
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="drawer-footer">
+    <span class="hint">ESC para fechar</span>
+    <button class="btn btn-outline" onclick="closeDrawer()">Cancelar</button>
+    <button class="btn btn-primary" onclick="submitInsumo(event)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Salvar Item
+    </button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script>
+  const API = 'http://localhost:3001/api';
+  let allInsumos = [];
+  let filtered   = [];
+  const PAGE_SIZE = 7;
+  let page = 1;
+
+  function fmtBRL(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+  function fmtDate(s){ if(!s) return '—'; return new Date(s).toLocaleDateString('pt-BR'); }
+  function toast(msg,type=''){
+    const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(()=>el.remove(),3500);
+  }
+
+  async function loadInsumos() {
+    try {
+      const data = await fetch(`${API}/insumos`).then(r=>r.json());
+      allInsumos = Array.isArray(data) ? data : [];
+    } catch {
+      allInsumos = [
+        { id:1, sku:'MP-00124', nome:'Chapa de Aco Inox 304 - 2mm', estoque_atual:45, unidade_medida:'UN', localizacao:'CORREDOR-A1', ultima_entrada:'2024-05-12', custo_unitario:320.00, critico:false },
+        { id:2, sku:'EL-00452', nome:'Cabo Flexivel 2.5mm Preto',    estoque_atual:12, unidade_medida:'MT', localizacao:'ELET-B4',     ultima_entrada:'2024-05-10', custo_unitario:4.50,  critico:true },
+        { id:3, sku:'QU-00089', nome:'Solvente Desengraxante Industrial', estoque_atual:210, unidade_medida:'LT', localizacao:'QUIM-02', ultima_entrada:'2024-05-15', custo_unitario:18.90, critico:false },
+        { id:4, sku:'FE-00912', nome:'Parafuso Sextavado M8x40',     estoque_atual:1250,unidade_medida:'UN', localizacao:'FIX-A2',     ultima_entrada:'2024-05-08', custo_unitario:0.45,  critico:false },
+        { id:5, sku:'EP-00231', nome:'Luva Nitrilica Tamanho G',      estoque_atual:5,  unidade_medida:'PAR',localizacao:'EPI-01',     ultima_entrada:'2024-05-01', custo_unitario:3.20,  critico:true },
+        { id:6, sku:'MP-00125', nome:'Viga U de Aluminio 4"',         estoque_atual:28, unidade_medida:'UN', localizacao:'CORREDOR-A3',ultima_entrada:'2024-05-14', custo_unitario:215.00,critico:false },
+        { id:7, sku:'EM-00774', nome:'Filme Stretch para Paletizacao',estoque_atual:14, unidade_medida:'RL', localizacao:'EXP-C1',     ultima_entrada:'2024-05-11', custo_unitario:42.00, critico:false, alerta:true },
+      ];
+      toast('Servidor offline — dados de demonstracao.','error');
+    }
+
+    // compute KPIs
+    const total   = allInsumos.length;
+    const valor   = allInsumos.reduce((s,i)=>s+(i.estoque_atual||0)*(i.custo_unitario||0),0);
+    const criticos= allInsumos.filter(i=>i.critico||i.estoque_atual<=5).length;
+
+    document.getElementById('kpi-skus').textContent     = total.toLocaleString('pt-BR');
+    document.getElementById('kpi-skus-sub').textContent = `+${Math.floor(total*0.01)} novos este mes`;
+    document.getElementById('kpi-valor').textContent    = fmtBRL(valor);
+    document.getElementById('kpi-criticos').textContent = criticos;
+
+    filterInsumos();
+  }
+
+  function filterInsumos() {
+    const q   = document.getElementById('alm-search').value.toLowerCase();
+    const cat = document.querySelector('.cat-select').value;
+    filtered = allInsumos.filter(i => {
+      const matchQ  = !q || i.nome?.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q) || i.localizacao?.toLowerCase().includes(q);
+      const matchCat= !cat || (i.sku||'').startsWith(cat);
+      return matchQ && matchCat;
+    });
+    page = 1;
+    renderTable();
+  }
+
+  function renderTable() {
+    const start = (page-1)*PAGE_SIZE;
+    const slice = filtered.slice(start, start+PAGE_SIZE);
+    const tbody = document.getElementById('insumos-tbody');
+
+    if(!slice.length) {
+      tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Nenhum item encontrado.</td></tr>';
+    } else {
+      tbody.innerHTML = slice.map(i => {
+        const isCritico = i.critico || i.estoque_atual <= 5;
+        const isAlerta  = i.alerta  || (!isCritico && i.estoque_atual <= 20);
+        let qtyBadge = `<div class="qty-badge"><span class="qty-cell">${i.estoque_atual}</span>`;
+        if (isCritico) qtyBadge += `<span class="badge-critico">CRITICO</span>`;
+        else if (isAlerta) qtyBadge += `<span class="badge-alerta">ALERTA</span>`;
+        qtyBadge += '</div>';
+
+        return `<tr>
+          <td><a class="sku-link" href="#">${i.sku || 'ID-'+i.id}</a></td>
+          <td>${i.nome}</td>
+          <td style="text-align:center">${qtyBadge}</td>
+          <td><span class="badge badge-gray">${i.unidade_medida||'—'}</span></td>
+          <td><span class="loc-dot"></span>${i.localizacao||'—'}</td>
+          <td style="color:var(--text-muted);font-size:12.5px">${fmtDate(i.ultima_entrada||i.criado_em)}</td>
+          <td style="text-align:right">
+            <div class="action-icons" style="justify-content:flex-end">
+              <button title="Adicionar estoque" onclick="ajustar(${i.id},+1)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button title="Remover estoque" class="red" onclick="ajustar(${i.id},-1)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button title="Transferir">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              </button>
+              <button title="Historico">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    const total = Math.ceil(filtered.length / PAGE_SIZE);
+    document.getElementById('alm-info').textContent =
+      `Exibindo ${start+1}–${Math.min(start+PAGE_SIZE,filtered.length)} de ${filtered.length} itens cadastrados`;
+    renderPagination(total);
+  }
+
+  function renderPagination(total) {
+    const pg = document.getElementById('alm-pagination');
+    if(total<=1){pg.innerHTML='';return;}
+    let html=`<button class="page-btn" onclick="goPage(${page-1})" ${page<=1?'disabled':''}>Anterior</button>`;
+    for(let i=1;i<=Math.min(total,5);i++){
+      html+=`<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    }
+    if(total>5) html+=`<span style="padding:0 4px">...</span><button class="page-btn ${total===page?'active':''}" onclick="goPage(${total})">${total}</button>`;
+    html+=`<button class="page-btn" onclick="goPage(${page+1})" ${page>=total?'disabled':''}>Proximo</button>`;
+    pg.innerHTML=html;
+  }
+
+  function goPage(p){
+    const total=Math.ceil(filtered.length/PAGE_SIZE);
+    if(p<1||p>total) return;
+    page=p; renderTable();
+  }
+
+  function ajustar(id, delta) {
+    const item = allInsumos.find(i=>i.id===id);
+    if(!item) return;
+    item.estoque_atual = Math.max(0, (item.estoque_atual||0)+delta);
+    filterInsumos();
+  }
+
+  function openNovoInsumo(){
+    document.getElementById('form-insumo').reset();
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-backdrop').classList.add('open');
+  }
+  function closeDrawer(){
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawer-backdrop').classList.remove('open');
+  }
+
+  async function submitInsumo(e){
+    if(e&&e.preventDefault) e.preventDefault();
+    const form=document.getElementById('form-insumo');
+    if(!form.reportValidity()) return;
+    const payload={
+      nome:         document.getElementById('f-nome').value,
+      unidade_medida:document.getElementById('f-unidade').value,
+      custo_unitario:parseFloat(document.getElementById('f-custo').value)||0,
+      estoque_atual: parseFloat(document.getElementById('f-estoque').value)||0,
+    };
+    try {
+      const res=await fetch(`${API}/insumos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.erro||'Erro');
+      toast('Insumo cadastrado!','success');
+      closeDrawer(); loadInsumos();
+    } catch {
+      const newItem={id:Date.now(),sku:'MP-'+String(Date.now()).slice(-5),...payload,localizacao:document.getElementById('f-local').value,critico:false};
+      allInsumos.unshift(newItem);
+      filterInsumos();
+      toast('Item salvo localmente (modo offline).','');
+      closeDrawer();
+    }
+  }
+
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') closeDrawer();});
+  document.addEventListener('DOMContentLoaded', loadInsumos);
+</script>
+</body>
+</html>
