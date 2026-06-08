@@ -15,7 +15,7 @@ function criarJanelaPrincipal () {
   });
 
   // Carrega o seu ficheiro HTML que contém a interface
-  mainWindow.loadFile('index.html');
+  mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'index.html'));
   
   // (Opcional) Maximiza a janela ao abrir - ideal para chão de fábrica
   mainWindow.maximize();
