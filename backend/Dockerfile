@@ -14,7 +14,7 @@ RUN npm install --production
 COPY . .
 
 # Expõe a porta que o sistema vai usar para se comunicar
-EXPOSE 3000
+EXPOSE 3001
 
 # O comando que "liga" o motor
 CMD ["npm", "start"]

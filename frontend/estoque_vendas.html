@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estoque Câmara Fria — ERP Fabrica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/global.css" />
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #f8fafc;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .header p {
+            color: #64748b;
+            margin: 5px 0 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .produto-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .produto-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .produto-card.critico {
+            border-left: 4px solid #dc2626;
+            background: #fef2f2;
+        }
+
+        .produto-card.normal {
+            border-left: 4px solid #059669;
+        }
+
+        .produto-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .produto-nome {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-badge.alerta {
+            background: #dc2626;
+            color: white;
+        }
+
+        .status-badge.ok {
+            background: #059669;
+            color: white;
+        }
+
+        .estoque-info {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .estoque-valor {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .estoque-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .estoque-sub {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .alerta-texto {
+            color: #dc2626;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 8px;
+            padding: 8px;
+            background: #fee2e2;
+            border-radius: 6px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .erro {
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+        }
+
+        .filtro-bar {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .filtro-bar input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .filtro-bar button {
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .stat-value.danger {
+            color: #dc2626;
+        }
+
+        .stat-value.success {
+            color: #059669;
+        }
+
+        .voltar-btn {
+            display: inline-block;
+            margin-bottom: 16px;
+            padding: 8px 16px;
+            background: #e2e8f0;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="voltar-btn">← Voltar ao Dashboard</a>
+        <h1>🧊 Câmara Fria - Estoque de Produtos</h1>
+        <p>Visão da Vendedora: O que está disponível para entrega imediata</p>
+        <div style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">
+            💡 <strong>Dica:</strong> Produtos com estoque &lt; 100 unidades precisam de produção imediata
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">Total de Produtos</div>
+                <div class="stat-value" id="stat-total">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Estoque Crítico (&lt;100)</div>
+                <div class="stat-value danger" id="stat-critico">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Estoque Zerado</div>
+                <div class="stat-value danger" id="stat-zerado">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Disponível para Venda</div>
+                <div class="stat-value success" id="stat-disponivel">—</div>
+            </div>
+        </div>
+
+        <div class="filtro-bar">
+            <input type="text" id="busca" placeholder="Buscar produto..." oninput="filtrarProdutos()">
+            <button onclick="filtrarProdutos()">🔍 Buscar</button>
+        </div>
+
+        <div id="produtos-container" class="cards-grid">
+            <div class="loading">Carregando estoque da câmara fria...</div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3001/api';
+        let todosProdutos = [];
+
+        async function carregarEstoque() {
+            try {
+                const response = await fetch(`${API}/produtos`);
+                const produtos = await response.json();
+                todosProdutos = Array.isArray(produtos) ? produtos : [];
+                
+                atualizarStats();
+                filtrarProdutos();
+            } catch (error) {
+                console.error('Erro ao carregar estoque:', error);
+                document.getElementById('produtos-container').innerHTML = 
+                    '<div class="erro">Erro ao carregar estoque. Tente novamente mais tarde.</div>';
+            }
+        }
+
+        function atualizarStats() {
+            const total = todosProdutos.length;
+            const criticos = todosProdutos.filter(p => p.estoque_atual > 0 && p.estoque_atual < 100).length;
+            const zerados = todosProdutos.filter(p => p.estoque_atual === 0).length;
+            const disponivel = todosProdutos.filter(p => p.estoque_atual >= 100).length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-critico').textContent = criticos;
+            document.getElementById('stat-zerado').textContent = zerados;
+            document.getElementById('stat-disponivel').textContent = disponivel;
+        }
+
+        function filtrarProdutos() {
+            const busca = document.getElementById('busca').value.toLowerCase();
+            const filtrados = todosProdutos.filter(p => 
+                p.nome.toLowerCase().includes(busca)
+            );
+
+            renderizarProdutos(filtrados);
+        }
+
+        function renderizarProdutos(produtos) {
+            const container = document.getElementById('produtos-container');
+
+            if (produtos.length === 0) {
+                container.innerHTML = '<div class="loading">Nenhum produto encontrado.</div>';
+                return;
+            }
+
+            container.innerHTML = produtos.map(produto => {
+                const estoque = produto.estoque_atual || 0;
+                const critico = estoque === 0 || estoque < 100;
+                const statusClass = critico ? 'alerta' : 'ok';
+                const statusText = critico ? 'Produção Necessária' : 'Disponível';
+                const cardClass = critico ? 'critico' : 'normal';
+
+                return `
+                    <div class="produto-card ${cardClass}">
+                        <div class="produto-header">
+                            <h3 class="produto-nome">${produto.nome}</h3>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="estoque-info">
+                            <span class="estoque-valor">${estoque}</span>
+                            <span class="estoque-label">unidades</span>
+                        </div>
+                        <div class="estoque-sub">
+                            ${estoque === 0 ? '⚠️ Zerado' : estoque < 100 ? '⚠️ Estoque baixo' : '✅ Estoque normal'}
+                        </div>
+                        ${critico ? `<div class="alerta-texto">⚠️ Produção necessária para atendimento imediato</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Carregar estoque ao abrir a página
+        carregarEstoque();
+
+        // Atualizar a cada 30 segundos
+        setInterval(carregarEstoque, 30000);
+    </script>
+</body>
+</html>

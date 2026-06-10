@@ -83,6 +83,200 @@ const producaoController = {
         }
     },
 
+    verificarImpedimentosOP: async (req, res) => {
+        try {
+            const { op_id } = req.params;
+
+            // Buscar a OP
+            const op = await pool.query(
+                `SELECT op.id, op.produto_id, op.quantidade_planejada, p.nome AS produto_nome
+                 FROM ordem_producao op
+                 JOIN produto p ON p.id = op.produto_id
+                 WHERE op.id = $1`,
+                [op_id]
+            );
+
+            if (op.rows.length === 0) {
+                return res.status(404).json({
+                    status: 'erro',
+                    erro: 'OP não encontrada'
+                });
+            }
+
+            const opData = op.rows[0];
+
+            // Buscar fichas técnicas do produto
+            const fichasInsumo = await pool.query(`
+                SELECT fti.insumo_id, fti.quantidade, i.nome, i.unidade_medida,
+                       i.estoque_atual, i.custo_unitario
+                FROM ficha_tecnica_insumo fti
+                JOIN insumo i ON i.id = fti.insumo_id
+                WHERE fti.produto_id = $1
+            `, [opData.produto_id]);
+
+            const fichasEmb = await pool.query(`
+                SELECT fte.embalagem_id, fte.quantidade, e.nome, e.estoque_atual, e.custo_unitario
+                FROM ficha_tecnica_embalagem fte
+                JOIN embalagem e ON e.id = fte.embalagem_id
+                WHERE fte.produto_id = $1
+            `, [opData.produto_id]);
+
+            const impedimentos = [];
+            const avisos = [];
+
+            // Verificar insumos
+            for (const f of fichasInsumo.rows) {
+                const qtdNecessaria = parseFloat(f.quantidade) * opData.quantidade_planejada;
+                const qtdDisponivel = parseFloat(f.estoque_atual);
+                const falta = qtdNecessaria - qtdDisponivel;
+
+                if (falta > 0) {
+                    impedimentos.push({
+                        tipo: 'insumo',
+                        nome: f.nome,
+                        necessario: qtdNecessaria.toFixed(4),
+                        disponivel: qtdDisponivel.toFixed(4),
+                        falta: falta.toFixed(4),
+                        unidade: f.unidade_medida
+                    });
+                }
+            }
+
+            // Verificar embalagens
+            for (const e of fichasEmb.rows) {
+                const qtdNecessaria = parseInt(e.quantidade, 10) * opData.quantidade_planejada;
+                const qtdDisponivel = parseInt(e.estoque_atual, 10);
+                const falta = qtdNecessaria - qtdDisponivel;
+
+                if (falta > 0) {
+                    impedimentos.push({
+                        tipo: 'embalagem',
+                        nome: e.nome,
+                        necessario: qtdNecessaria,
+                        disponivel: qtdDisponivel,
+                        falta: falta,
+                        unidade: 'un'
+                    });
+                }
+            }
+
+            // Verificar se tem ficha técnica
+            if (fichasInsumo.rows.length === 0 && fichasEmb.rows.length === 0) {
+                avisos.push('Produto sem ficha técnica cadastrada');
+            }
+
+            const temImpedimentos = impedimentos.length > 0;
+
+            res.json({
+                op_id: opData.id,
+                produto: opData.produto_nome,
+                quantidade_planejada: opData.quantidade_planejada,
+                tem_impedimentos: temImpedimentos,
+                impedimentos: impedimentos,
+                avisos: avisos,
+                status_estoque: temImpedimentos ? 'IMPEDIMENTO' : 'OK'
+            });
+
+        } catch (error) {
+            res.status(500).json({ status: 'erro', erro: error.message });
+        }
+    },
+
+    planejarProducao: async (req, res) => {
+        try {
+            const { colaborador_id, data_programada, ops_ids } = req.body;
+
+            if (!colaborador_id || !data_programada || !ops_ids || !Array.isArray(ops_ids)) {
+                return res.status(400).json({
+                    status: 'erro',
+                    erro: 'Campos obrigatórios: colaborador_id, data_programada, ops_ids (array)'
+                });
+            }
+
+            // Buscar a meta diária do colaborador
+            const colaborador = await pool.query(
+                'SELECT nome, meta_diaria FROM colaborador WHERE id = $1 AND ativo = TRUE',
+                [colaborador_id]
+            );
+
+            if (colaborador.rows.length === 0) {
+                return res.status(404).json({
+                    status: 'erro',
+                    erro: 'Colaborador não encontrado ou inativo'
+                });
+            }
+
+            const metaDiaria = colaborador.rows[0].meta_diaria;
+            const nomeColaborador = colaborador.rows[0].nome;
+
+            // Buscar quantidade já planejada para o colaborador na data
+            const opsExistentes = await pool.query(
+                `SELECT SUM(quantidade_planejada) as total_planejado
+                 FROM ordem_producao
+                 WHERE colaborador_id = $1
+                 AND data_programada = $2
+                 AND status != 'CONCLUIDA'`,
+                [colaborador_id, data_programada]
+            );
+
+            const totalPlanejado = parseInt(opsExistentes.rows[0].total_planejado || 0);
+
+            // Buscar quantidade das novas OPs
+            const novasOps = await pool.query(
+                `SELECT id, quantidade_planejada, produto_id
+                 FROM ordem_producao
+                 WHERE id = ANY($1)`,
+                [ops_ids]
+            );
+
+            if (novasOps.rows.length === 0) {
+                return res.status(404).json({
+                    status: 'erro',
+                    erro: 'Nenhuma OP válida encontrada'
+                });
+            }
+
+            const totalNovasOps = novasOps.rows.reduce((sum, op) => sum + op.quantidade_planejada, 0);
+            const novoTotal = totalPlanejado + totalNovasOps;
+
+            // Verificar se ultrapassa a meta
+            const ultrapassaMeta = novoTotal > metaDiaria;
+            const aviso = ultrapassaMeta
+                ? `⚠️ ALERTA: Alocação ultrapassa meta diária! Atual: ${totalPlanejado}, Novas: ${totalNovasOps}, Total: ${novoTotal}, Meta: ${metaDiaria}. Sobrecarga de ${novoTotal - metaDiaria} unidades.`
+                : null;
+
+            // Atualizar as OPs com o colaborador e data programada
+            const updates = [];
+            for (const op of novasOps.rows) {
+                const update = await pool.query(
+                    `UPDATE ordem_producao
+                     SET colaborador_id = $1, data_programada = $2
+                     WHERE id = $3
+                     RETURNING *`,
+                    [colaborador_id, data_programada, op.id]
+                );
+                updates.push(update.rows[0]);
+            }
+
+            res.json({
+                status: 'sucesso',
+                mensagem: 'Produção planejada com sucesso.',
+                colaborador: nomeColaborador,
+                data_programada,
+                meta_diaria: metaDiaria,
+                total_planejado_anterior: totalPlanejado,
+                total_novas_ops: totalNovasOps,
+                total_geral: novoTotal,
+                ultrapassa_meta: ultrapassaMeta,
+                aviso,
+                ops_atualizadas: updates
+            });
+
+        } catch (error) {
+            res.status(500).json({ status: 'erro', erro: error.message });
+        }
+    },
+
     necessidadeCompras: async (req, res) => {
         try {
             const margem = parseFloat(req.query.margem) || 0;
@@ -161,6 +355,7 @@ const producaoController = {
             const montarLista = (mapa, tipo) => Object.values(mapa)
                 .map((item) => {
                     const quantidade_comprar = Math.max(0, item.demanda_total - item.estoque_atual);
+                    const status_estoque = quantidade_comprar > 0 ? 'IMPEDIMENTO' : 'OK';
                     return {
                         tipo,
                         id: item.insumo_id || item.embalagem_id,
@@ -169,7 +364,8 @@ const producaoController = {
                         demanda_total: parseFloat(item.demanda_total.toFixed(4)),
                         estoque_atual: item.estoque_atual,
                         quantidade_comprar: parseFloat(quantidade_comprar.toFixed(4)),
-                        custo_estimado: parseFloat((quantidade_comprar * item.custo_unitario).toFixed(2))
+                        custo_estimado: parseFloat((quantidade_comprar * item.custo_unitario).toFixed(2)),
+                        status_estoque
                     };
                 })
                 .filter((i) => i.quantidade_comprar > 0);

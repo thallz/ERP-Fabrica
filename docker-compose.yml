@@ -21,7 +21,7 @@ services:
   api-erp:
     build: ./backend
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - DB_USER=admin_fabrica
       - DB_PASSWORD=senha_super_segura_123

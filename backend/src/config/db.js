@@ -1,12 +1,12 @@
 const { Pool } = require('pg');
 
-// Configuração usando as credenciais do nosso Docker
+// Configuração usando variáveis de ambiente para flexibilidade (local/Docker)
 const pool = new Pool({
-    user: 'admin_fabrica',
-    password: 'senha_super_segura_123',
-    host: 'localhost', // Usamos localhost porque estamos rodando o Node fora do docker por enquanto
-    port: 5432,
-    database: 'erp_salgados'
+    user: process.env.DB_USER || 'admin_fabrica',
+    password: process.env.DB_PASSWORD || 'senha_super_segura_123',
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'erp_salgados'
 });
 
 // Teste de conexão ao iniciar

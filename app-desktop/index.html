@@ -1739,16 +1739,61 @@
             </div>`).join('') : '<p style="color:#64748b">Nenhum cliente cadastrado.</p>';
 
         document.getElementById('grid-producao').innerHTML = filaProducao.length ? filaProducao.map(op => `
-            <div class="card op-card">
-                <div class="card-header"><span style="color:#64748b;">OP #${op.numero_op}</span><span class="card-tag" style="background:#fef3c7;color:#b45309;">${op.status}</span></div>
+            <div class="card op-card" id="op-card-${op.numero_op}">
+                <div class="card-header">
+                    <span style="color:#64748b;">OP #${op.numero_op}</span>
+                    <span class="card-tag" style="background:#fef3c7;color:#b45309;">${op.status}</span>
+                </div>
                 <div style="font-weight:600;margin:8px 0;">${op.produto}</div>
                 <div>Fabricar: <strong>${op.quantidade_planejada} un</strong></div>
                 <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">Câmara Fria: ${op.estoque_camara_fria ?? 0} un</div>
+                <div id="impedimento-${op.numero_op}" style="margin-top:8px;"></div>
                 <div class="card-actions">
+                    <button class="btn-card btn-edit" onclick="verificarImpedimentos(${op.numero_op})">🔍 Verificar Estoque</button>
                     <button class="btn-card btn-edit" onclick="abrirModalIntercorrencia(${op.numero_op})">⚠️ Parada</button>
                     <button class="btn-card btn-del" onclick="excluirOP(${op.numero_op})">🗑️ Excluir</button>
                 </div>
             </div>`).join('') : '<p style="color:#64748b">Fila de produção vazia.</p>';
+
+        // Verificar impedimentos automaticamente para cada OP
+        for (const op of filaProducao) {
+            verificarImpedimentos(op.numero_op);
+        }
+    }
+
+    async function verificarImpedimentos(opId) {
+        const elemento = document.getElementById(`impedimento-${opId}`);
+        if (!elemento) return;
+
+        try {
+            const response = await fetch(`${API_URL}/producao/op/${opId}/impedimentos`);
+            const dados = await response.json();
+
+            if (dados.tem_impedimentos) {
+                elemento.innerHTML = `
+                    <div style="background:#fee2e2;color:#dc2626;padding:8px;border-radius:6px;font-size:0.8rem;font-weight:600;">
+                        🔴 IMPEDIMENTO: Faltam ${dados.impedimentos.length} item(ns)
+                    </div>
+                    <div style="margin-top:4px;font-size:0.75rem;color:#dc2626;">
+                        ${dados.impedimentos.slice(0, 2).map(i => `• ${i.nome}: falta ${i.falta} ${i.unidade}`).join('<br>')}
+                        ${dados.impedimentos.length > 2 ? `<br>...e mais ${dados.impedimentos.length - 2}` : ''}
+                    </div>
+                `;
+            } else {
+                elemento.innerHTML = `
+                    <div style="background:#dcfce7;color:#166534;padding:8px;border-radius:6px;font-size:0.8rem;font-weight:600;">
+                        ✅ Estoque OK para produção
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Erro ao verificar impedimentos:', error);
+            elemento.innerHTML = `
+                <div style="background:#f3f4f6;color:#64748b;padding:8px;border-radius:6px;font-size:0.8rem;">
+                    ⏳ Verificando estoque...
+                </div>
+            `;
+        }
     }
 
     window.onload = async function() { await carregarTodosOsDados(); };

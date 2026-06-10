@@ -81,6 +81,21 @@ INSERT INTO tipo_intercorrencia (codigo, descricao) VALUES
 ('P1', 'Problema de Processo / Qualidade de Massa/Recheio'),
 ('O1', 'Ociosidade / Falta de Demanda ou Insumo');
 
+-- 5b. COLABORADORES (Equipe de Produção)
+CREATE TABLE colaborador (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    meta_diaria INT DEFAULT 350, -- Meta padrão de 350 unidades por dia
+    ativo BOOLEAN DEFAULT TRUE,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserir alguns colaboradores de exemplo
+INSERT INTO colaborador (nome, meta_diaria) VALUES
+('Maria Silva', 350),
+('João Santos', 400),
+('Ana Costa', 350);
+
 -- 6. FILA DE PRODUÇÃO (Bateladas)
 CREATE TABLE ordem_producao (
     id SERIAL PRIMARY KEY,
@@ -90,6 +105,8 @@ CREATE TABLE ordem_producao (
     status VARCHAR(20) DEFAULT 'FILA', -- 'FILA', 'PRODUZINDO', 'CONCLUIDA', 'PAUSADA'
     data_inicio TIMESTAMP,
     data_fim TIMESTAMP,
+    colaborador_id INT REFERENCES colaborador(id), -- Colaborador responsável
+    data_programada DATE, -- Data planejada para produção
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
